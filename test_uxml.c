@@ -15,10 +15,11 @@ int test1()
   /* test header and comment */
   const char x[] = 
     "<?xml version='1.0' encoding=\"WINDOWS-1251\" ?>\n"
-    "<!-- comment out -->\n"
+    "<!-- comment -->\n"
     "<nodeR>\n"
+    "<nodeC/>\n"
     "<nodeA attr1A=\"value1A\"/>\n"
-    "<nodeB attr1B=\"value1B\" attr2B=\"value2B\">  contentB   </nodeB>\n"
+    //"<nodeB attr1B=\"value1B\" attr2B=\"value2B\">  contentB_a <!-- commentB --> contentB_b <nodeC/> commentB_c </nodeB>\n"
     "</nodeR>\n";
   
   if( (root = uxml_parse( x, sizeof( x ), &e )) == NULL ) return print_error( &e );

@@ -360,6 +360,11 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
         p->text_index++;               /* terminate name with zero byte */
         p->state = NODE_CONTENT_TRIM;  /* start content dispatch */
       }
+      else if( c[-1] == '/' && c[0] == '>' )
+      {
+        p->state = state;              /* restore outer state */
+        return node_index;             /* dispatch done */
+      }
       else if( !isspace( c[0] ) )           /* non-space character? that is name */
       {                                
         if( p->text != NULL )          /* if text buffer present, */
@@ -504,6 +509,11 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
     }
     else if( p->state == NODE_CONTENT_TRIM || p->state == NODE_CONTENT )
     {
+      if( (c[-1] == '<' && c[0] == '!') || 
+          (c[-2] == '<' && c[-1] == '!' && c[0] == '-') )
+      {
+        continue;
+      }
       if( c[-1] == '<' )
       {
         if( isalpha( c[0] ) )          /* open new node? */
@@ -770,14 +780,19 @@ void uxml_free( uxml_node_t *root )
   free( root->instance );
 }
 
+uxml_node_t *uxml_first_attr( uxml_node_t *node )
+{
+  return node->attr == 0 ? NULL: node->instance->node + node->attr;
+}
+
 uxml_node_t *uxml_child( uxml_node_t *node )
 {
-  return node->instance->node + node->child;
+  return node->child == 0 ? NULL: node->instance->node + node->child;
 }
 
 uxml_node_t *uxml_next( uxml_node_t *node )
 {
-  return node->instance->node + node->next;
+  return node->next == 0 ? NULL: node->instance->node + node->next;
 }
 
 const char *uxml_attr( uxml_node_t *node, const char *name )
@@ -796,7 +811,47 @@ const char *uxml_attr( uxml_node_t *node, const char *name )
   return "";
 }
 
+const char *uxml_content( uxml_node_t *node )
+{
+  return node->instance->text + node->content;
+}
+
 #include <stdio.h>
+
+uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error )
+{
+  FILE *fp;
+  void *b;
+  int size, n;
+  uxml_node_t *root;
+
+  if( (fp = fopen( xml_file, "rb" )) == NULL )
+  {
+    error->text = "fopen failed"; error->line = error->column = 0;
+    return NULL;
+  }
+  fseek( fp, 0, SEEK_END );
+  n = ftell( fp );
+  fseek( fp, 0, SEEK_SET );
+  if( (b = malloc( n )) == NULL )
+  {
+    fclose( fp );
+    error->text = "malloc failed"; error->line = error->column = 0;
+    return NULL;
+  }
+  size = fread( b, 1, n, fp );
+  fclose( fp );
+  if( size != n )
+  {
+    free( b );
+    error->text = "fread failed"; error->line = error->column = 0;
+    return NULL;
+  }
+  root = uxml_parse( b, n, error );
+  free( b );
+  return root;
+}
+
 void uxml_dump_list( uxml_node_t *root )
 {
   uxml_t *p = root->instance;

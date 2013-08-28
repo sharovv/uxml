@@ -1,4 +1,11 @@
 cmake_minimum_required( VERSION 2.6 )
 project( uxml )
 include_directories( ${CMAKE_SOURCE_DIR} )
-add_executable( test_uxml uxml.c test_uxml.c )
+
+add_library( uxml uxml.c )
+
+add_executable( test_uxml test_uxml.c )
+target_link_libraries( test_uxml uxml )
+
+add_executable( dump_xml dump_xml.c )
+target_link_libraries( dump_xml uxml )
