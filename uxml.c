@@ -7,7 +7,7 @@ enum { NONE,
        NODE_ATTR_NAME, NODE_ATTR_EQ, NODE_ATTR_EQ_FOUND, NODE_ATTR_VALUE_DQ, NODE_ATTR_VALUE_SQ,
        NODE_END,
        INST_NAME, INST_TAG,
-       INST_ATTR_NAME, INST_ATTR_EQ, INST_ATTR_VALUE_DQ, INST_ATTR_VALUE_SQ,
+       INST_ATTR_NAME, INST_ATTR_EQ, INST_ATTR_EQ_FOUND, INST_ATTR_VALUE_DQ, INST_ATTR_VALUE_SQ,
        COMMENT };
 
 /* UXML parser state machine
@@ -360,7 +360,17 @@ static int uxml_parse_inst( uxml_t *p )
     }
     else if( p->state == INST_ATTR_NAME )
     {
-      if( isalpha( c[0] ) || isdigit( c[0] ) ) /* valid character for name? */
+      if( isspace( c[0] ) )           /* attribute's name end with '=' */
+      {
+        p->state = INST_ATTR_EQ;       /* new state */
+        p->text_index++;               /* end name with zero byte */
+      }
+      else if( c[0] == '=' )           /* attribute's name end with '=' */
+      {
+        p->state = INST_ATTR_EQ_FOUND; /* new state */
+        p->text_index++;               /* end name with zero byte */
+      }
+      else                             /* all other characters means error */
       {
         if( p->text != NULL )          /* if text buffer present, */
         {
@@ -368,18 +378,20 @@ static int uxml_parse_inst( uxml_t *p )
         }
         p->text_index++;               /* go to next character */
       }
-      else if( c[0] == '=' )           /* attribute's name end with '=' */
+    }
+    else if( p->state == NODE_ATTR_EQ )
+    {
+      if( c[0] == '=' )
       {
-        p->state = INST_ATTR_EQ;       /* new state */
-        p->text_index++;               /* end name with zero byte */
+        p->state = INST_ATTR_EQ_FOUND;
       }
-      else                             /* all other characters means error */
+      else if( !isspace( c[0] ) )
       {
-        p->error = "Attribute name must end with '='";
+        p->error = "Extra character after attribute's name";
         return 0;
       }
     }
-    else if( p->state == INST_ATTR_EQ )
+    else if( p->state == INST_ATTR_EQ_FOUND )
     {
       if( c[0] == '\"' )               /* start attribute's value reading "value" */
       {
@@ -397,9 +409,9 @@ static int uxml_parse_inst( uxml_t *p )
           a->content = p->text_index;  /* content points to attribute's value */
         }
       }
-      else                             /* error in other case */
+      else if( !isspace( c[0] ) )      /* error in other non-space character */
       {
-        p->error = "Attribute value must begin with '\"'";
+        p->error = "Attribute value must begin with '\"' or '\''";
         return 0;
       }
     }
@@ -815,9 +827,9 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
           p->node[ node_index ].content = content_begin;
           if( parent_node != 0 )
           {
-            if( p->node[ parent_node ].child == 0 )
+            if( p->node[ parent_node ].child == 0 ) /* if this is first child */
             {
-              p->node[ parent_node ].child = node_index;
+              p->node[ parent_node ].child = node_index; /* parent will point to it */
             }
           }
         }
