@@ -4,7 +4,7 @@
 
 enum { NONE,
        NODE_NAME, NODE_TAG, NODE_CONTENT_TRIM, NODE_CONTENT,
-       NODE_ATTR_NAME, NODE_ATTR_EQ, NODE_ATTR_VALUE_DQ, NODE_ATTR_VALUE_SQ,
+       NODE_ATTR_NAME, NODE_ATTR_EQ, NODE_ATTR_EQ_FOUND, NODE_ATTR_VALUE_DQ, NODE_ATTR_VALUE_SQ,
        NODE_END,
        INST_NAME, INST_TAG,
        INST_ATTR_NAME, INST_ATTR_EQ, INST_ATTR_VALUE_DQ, INST_ATTR_VALUE_SQ,
@@ -30,11 +30,11 @@ enum { NONE,
 | |    ||    ||    | | 
 | |    ||    ||    | | +- NODE_CONTENT if( state==NODE_CONTENT_TRIM && !isspace( c[0] ) )
 | |    ||    ||    | | | 
-| |    ||    ||    | | |        +------ NODE_END if( state==NODE_CONTENT && c[-2]=='<' && c[-1]=='/' )
-| |    ||    ||    | | |        |
-| |    ||    ||    | | |        |    +- NONE|NODE_CONTENT if( state==NODE_END && c[0]=='>' )
-| |    ||    ||    | | |        |    |
- <node1 attr1="val1" > content </node>
+| |    ||    ||    | | |            +------ NODE_END if( state==NODE_CONTENT && c[-2]=='<' && c[-1]=='/' )
+| |    ||    ||    | | |            |
+| |    ||    ||    | | |            |    +- NONE|NODE_CONTENT if( state==NODE_END && c[0]=='>' )
+| |    ||    ||    | | |            |    |
+ <node1 attr1="val1" > content &lt; </node>
 
                                    +- NONE if( state==NODE_TAG && c[-1]=='/' && c[0]=='>' )
                                    |
@@ -85,6 +85,7 @@ typedef struct _uxml_t
   int nodes_count;   /* количество элементов в XML данных*/
   int state;         /* current state */
   int c[4];          /* queue of last 4 characters */
+  int escape[4];     /* escape flags for last 4 characters */
   int line;          /* current line, freeze at error position */
   int column;        /* current column, freeze at error position */
   const char *error; /* error's text */      
@@ -106,14 +107,143 @@ struct _uxml_node_t
 #define isalpha( c ) ((c>='A'&&c<='Z')||(c>='a'&&c<='z'))
 #define isspace( c ) (c==' '||c=='\n'||c=='\t'||c=='\r')
 
-static int uxml_getc( uxml_t *p, int **c )
+static int uxml_getc( uxml_t *p )
 {
-  *c = p->c + 3;
+  int i, t, code = 0, dec = 0, hex = 0, v = 0;
+
   if( p->xml_index != p->xml_size && p->xml[ p->xml_index ] != 0 )
   {
     p->c[0] = p->c[1];
     p->c[1] = p->c[2];
     p->c[2] = p->c[3];
+
+    p->escape[0] = p->escape[1];
+    p->escape[1] = p->escape[2];
+    p->escape[2] = p->escape[3];
+    p->escape[3] = 0;
+
+    if( p->xml[ p->xml_index ] == '&' && 
+       (p->state == NODE_CONTENT || 
+        p->state == NODE_CONTENT_TRIM || 
+        p->state == NODE_ATTR_VALUE_DQ || 
+        p->state == NODE_ATTR_VALUE_SQ ||
+        p->state == INST_ATTR_VALUE_DQ || 
+        p->state == INST_ATTR_VALUE_SQ) )          /* escape sequences in attribute value or the content */
+    {
+      p->xml_index++;
+      p->column++;
+      for( i = p->xml_index; p->xml_index != p->xml_size && p->xml[ p->xml_index ] != 0; )
+      {
+        t = p->xml[ p->xml_index++ ];
+        p->column++;
+
+        if( t == ';' )
+        {
+          if( (p->xml_index - i) == 3 && p->xml[i] == 'l' && p->xml[i+1] == 't' )
+          {
+            p->c[3] = '<';
+            p->escape[3] = 1;
+            return 1;
+          }
+          else if( (p->xml_index - i) == 3 && p->xml[i] == 'g' && p->xml[i+1] == 't' )
+          {
+            p->c[3] = '>';
+            p->escape[3] = 1;
+            return 1;
+          }
+          else if( (p->xml_index - i) == 4 && p->xml[i] == 'a' && p->xml[i+1] == 'm' && p->xml[i+2] == 'p' )
+          {
+            p->c[3] = '&';
+            p->escape[3] = 1;
+            return 1;
+          }
+          else if( (p->xml_index - i) == 5 && p->xml[i] == 'a' && p->xml[i+1] == 'p' && p->xml[i+2] == 'o' && p->xml[i+3] == 's' )
+          {
+            p->c[3] = '\'';
+            p->escape[3] = 1;
+            return 1;
+          }
+          else if( (p->xml_index - i) == 5 && p->xml[i] == 'q' && p->xml[i+1] == 'u' && p->xml[i+2] == 'o' && p->xml[i+3] == 't' )
+          {
+            p->c[3] = '\"';
+            p->escape[3] = 1;
+            return 1;
+          }
+          else if( dec || hex )
+          {
+            p->c[3] = v;
+            p->escape[3] = 1;
+            return 1;
+          }
+          else
+          {
+            p->error = "Error in escape sequence";
+            return 0;
+          }
+        }
+        else if( t == '#' && (p->xml_index - i) == 1 )
+        {
+          code = 1;
+        }
+        else if( code )
+        {
+          if( (p->xml_index - i) == 2 )
+          {
+            if( t == 'x' )
+            {
+              hex = 1;
+            }
+            else if( isdigit( t ) )
+            {
+              dec = 1;
+              v = t - '0';
+            }
+            else
+            {
+              p->error = "Only decimal or hexdecimal escape allowed";
+              return 0;
+            }
+          }
+          else
+          {
+            if( dec )
+            {
+              if( isdigit( t ) )
+              {
+                v = v * 10 + (t - '0');
+              }
+              else
+              {
+                p->error = "Error in decimal escape";
+                return 0;
+              }
+            }
+            else if( hex )
+            {
+              if( isdigit( t ) )
+              {
+                v = (v << 4) + (t - '0');
+              }
+              else if( t >= 'A' && t <= 'F' )
+              {
+                v = (v << 4) + (t - 'A') + 10;
+              }
+              else if( t >= 'a' && t <= 'f' )
+              {
+                v = (v << 4) + (t - 'a') + 10;
+              }
+              else
+              {
+                p->error = "Error in hexdecimal escape";
+                return 0;
+              }
+            }
+          }
+        }
+      }
+      p->error = "Unterminated escape";
+      return 0;
+    }
     p->c[3] = p->xml[ p->xml_index++ ];
 
     if( p->c[3] == '\n' )
@@ -139,7 +269,8 @@ static int uxml_getc( uxml_t *p, int **c )
  */
 static int uxml_parse_inst( uxml_t *p )
 {
-  int *c;
+  int *c = p->c + 3;
+  int *escape = p->escape + 3;
   int state = p->state;                /* keep current state */
   int node_index = p->node_index;      /* index of process instruction node */
   uxml_node_t *n = NULL;               /* node for process instruction */
@@ -160,7 +291,7 @@ static int uxml_parse_inst( uxml_t *p )
   p->node_index++;                     /* next node */
                                        
   p->state = INST_NAME;                /* new state - read instruction name */
-  while( uxml_getc( p, &c ) )          /* read new character */
+  while( uxml_getc( p ) )          /* read new character */
   {                                    
     if( p->state == INST_NAME )        /* is name reading ? */
     {                                  
@@ -274,7 +405,7 @@ static int uxml_parse_inst( uxml_t *p )
     }
     else if( p->state == INST_ATTR_VALUE_DQ )
     {
-      if( c[0] == '\"' )               /* value ended? */
+      if( c[0] == '\"' && !escape[0] ) /* value ended? */
       {
         p->text_index++;               /* end value with zero byte */
         p->state = INST_TAG;           /* return to tag dispatch */
@@ -290,7 +421,7 @@ static int uxml_parse_inst( uxml_t *p )
     }
     else if( p->state == INST_ATTR_VALUE_SQ )
     {
-      if( c[0] == '\'' )               /* value ended? */
+      if( c[0] == '\'' && !escape[0] ) /* value ended? */
       {
         p->text_index++;               /* end value with zero byte */
         p->state = INST_TAG;           /* return to tag dispatch */
@@ -305,7 +436,8 @@ static int uxml_parse_inst( uxml_t *p )
       }
     }
   }
-  p->error = "Unterminated process instruction";
+  if( p->error == NULL )
+    p->error = "Unterminated process instruction";
   return 0;
 }
 
@@ -314,7 +446,8 @@ static int uxml_parse_inst( uxml_t *p )
  */
 static int uxml_parse_node( uxml_t *p, int parent_node )
 {
-  int *c;
+  int *c = p->c + 3;
+  int *escape = p->escape + 3;
   int state = p->state;                /* keep current state */
   int node_index = p->node_index;      /* index of node */
   uxml_node_t *n = NULL;               /* node itself */
@@ -347,23 +480,35 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
   }
   p->text_index++;                     /* go to next character */
 
-  //content_begin = p->text_index;       /* content's begin index in text buffer*/
-  //content_end = p->text_index;         /* content's end index in text buffer */
-                                       
   p->state = NODE_NAME;                /* new state - read instruction name */
-  while( uxml_getc( p, &c ) )          /* read new character */
+  while( uxml_getc( p ) )          /* read new character */
   {                                    
     if( p->state == NODE_NAME )        /* is name reading ? */
     {                                  
-      if( c[0] == '>' )
+      if( c[-1] == '/' && c[0] == '>' )
+      {
+        p->text_index++;               /* end name with zero-byte */
+        p->state = state;              /* restore outer state */
+        if( p->node != NULL )
+        {          
+          if( parent_node != 0 )
+          {
+            if( p->node[ parent_node ].child == 0 )
+            {
+              p->node[ parent_node ].child = node_index;
+            }
+          }
+        }
+        return node_index;             /* dispatch done */
+      }
+      else if( c[0] == '/' )
+      {
+        continue;
+      }
+      else if( c[0] == '>' )
       {
         p->text_index++;               /* terminate name with zero byte */
         p->state = NODE_CONTENT_TRIM;  /* start content dispatch */
-      }
-      else if( c[-1] == '/' && c[0] == '>' )
-      {
-        p->state = state;              /* restore outer state */
-        return node_index;             /* dispatch done */
       }
       else if( !isspace( c[0] ) )           /* non-space character? that is name */
       {                                
@@ -418,6 +563,16 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
       else if( c[-1] == '/' && c[0] == '>' )
       {
         p->state = state;              /* restore outer state */
+        if( p->node != NULL )
+        {          
+          if( parent_node != 0 )
+          {
+            if( p->node[ parent_node ].child == 0 )
+            {
+              p->node[ parent_node ].child = node_index;
+            }
+          }
+        }
         return node_index;             /* dispatch done */
       }
       else if( c[0] == '>' )           /* node tag over */
@@ -432,7 +587,17 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
     }
     else if( p->state == NODE_ATTR_NAME )
     {
-      if( isalpha( c[0] ) || isdigit( c[0] ) ) /* valid character for name? */
+      if( isspace( c[0] ) )
+      {
+        p->state = NODE_ATTR_EQ;       /* new state */
+        p->text_index++;               /* end name with zero byte */
+      }
+      else if( c[0] == '=' )
+      {
+        p->state = NODE_ATTR_EQ_FOUND; /* new state */
+        p->text_index++;               /* end name with zero byte */
+      }
+      else
       {
         if( p->text != NULL )          /* if text buffer present, */
         {
@@ -440,18 +605,20 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
         }
         p->text_index++;               /* go to next character */
       }
-      else if( c[0] == '=' )           /* attribute's name end with equation sign */
+    }
+    else if( p->state == NODE_ATTR_EQ )
+    {
+      if( c[0] == '=' )
       {
-        p->state = NODE_ATTR_EQ;       /* new state */
-        p->text_index++;               /* end name with zero byte */
+        p->state = NODE_ATTR_EQ_FOUND;
       }
-      else                             /* all other characters means error */
+      else if( !isspace( c[0] ) )
       {
-        p->error = "Attribute name must end with '='";
+        p->error = "Extra character after attribute's name";
         return 0;
       }
     }
-    else if( p->state == NODE_ATTR_EQ )
+    else if( p->state == NODE_ATTR_EQ_FOUND )
     {
       if( c[0] == '\"' )               /* start attribute's value reading "value" */
       {
@@ -469,15 +636,15 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
           a->content = p->text_index;  /* content points to attribute's value */
         }
       }
-      else                             /* error in other case */
+      else if( !isspace( c[0] ) )      /* error in other non-space character */
       {
-        p->error = "Attribute value must begin with '\"'";
+        p->error = "Attribute value must begin with '\"' or '\''";
         return 0;
       }
     }
     else if( p->state == NODE_ATTR_VALUE_DQ )
     {
-      if( c[0] == '\"' )               /* value ended? */
+      if( c[0] == '\"' && !escape[0] ) /* value ended? */
       {
         p->text_index++;               /* end value with zero byte */
         p->state = NODE_TAG;           /* return to tag dispatch */
@@ -493,7 +660,7 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
     }
     else if( p->state == NODE_ATTR_VALUE_SQ )
     {
-      if( c[0] == '\'' )               /* value ended? */
+      if( c[0] == '\'' && !escape[0] ) /* value ended? */
       {
         p->text_index++;               /* end value with zero byte */
         p->state = NODE_TAG;           /* return to tag dispatch */
@@ -509,12 +676,12 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
     }
     else if( p->state == NODE_CONTENT_TRIM || p->state == NODE_CONTENT )
     {
-      if( (c[-1] == '<' && c[0] == '!') || 
-          (c[-2] == '<' && c[-1] == '!' && c[0] == '-') )
+      if( (c[-1] == '<' && !escape[-1] && c[0] == '!' && !escape[0] ) || 
+          (c[-2] == '<' && !escape[-2] && c[-1] == '!' && !escape[-1] && c[0] == '-' && !escape[0] ) )
       {
         continue;
       }
-      if( c[-1] == '<' )
+      if( c[-1] == '<' && !escape[-1] )
       {
         if( isalpha( c[0] ) )          /* open new node? */
         {
@@ -552,7 +719,7 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
             }
           }
         }
-        else if( c[0] == '/' )
+        else if( c[0] == '/' && !escape[0] )
         {
           p->text_index++;             /* end content with zero byte */
           p->state = NODE_END;
@@ -563,35 +730,53 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
           return 0;
         }
       }
-      else if( c[-3]=='<' && c[-2]=='!' && c[-1]=='-' && c[0]=='-' )
+      else if( c[-3]=='<' && !escape[-3] && c[-2]=='!' && !escape[-2] && c[-1]=='-' && !escape[-1] && c[0]=='-' && !escape[0] )
       {
         comment_state = p->state;      /* keep state before comment occured */
         p->state = COMMENT;            /* comment in */
       }
-      else if( c[0] != '<' )           /* regular symbol of content */
+      else if( c[0] != '<' || escape[0] )           /* regular symbol of content */
       {
         if( p->state == NODE_CONTENT_TRIM )
         {
-          if( !isspace( c[0] ) )       /* first non-space character? */
+          if( !isspace( c[0] ) )       /* non-space character? */
           {
             p->state = NODE_CONTENT;
+            if( content_begin != 0 )
+            {
+              if( p->text != NULL )    /* store it, if needed */
+              {
+                p->text[ p->text_index ] = ' '; /* store one space instead several */
+              }
+              p->text_index++;
+            }
+            else
+            {
+              content_begin = p->text_index; /* the content begin. */
+            }
             if( p->text != NULL )      /* store it, if needed */
             {
               p->text[ p->text_index ] = c[0];
             }
-            content_begin = p->text_index; /* the content begin. */
             p->text_index++;               /* next character */
             content_end = p->text_index;   /* and content's end */
           }
         }
-        else                            /* need to read content */
+        else                           /* need to read content */        
         {
-          if( p->text != NULL )        /* store character, if needed */
+          if( isspace( c[0] ) )        /* all empty characters will replaced with one space */
           {
-            p->text[ p->text_index ] = c[0];
+            p->state = NODE_CONTENT_TRIM;
           }
-          p->text_index++;             /* next character */
-          content_end = p->text_index; /* and content's end */
+          else
+          {
+            if( p->text != NULL )      /* store character, if needed */
+            {
+              p->text[ p->text_index ] = c[0];
+            }
+            p->text_index++;             /* next character */
+            content_end = p->text_index; /* and content's end */
+          }
         }
       }
     }
@@ -630,7 +815,7 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
           p->node[ node_index ].content = content_begin;
           if( parent_node != 0 )
           {
-            if( p->node[ parent_node ].child != 0 )
+            if( p->node[ parent_node ].child == 0 )
             {
               p->node[ parent_node ].child = node_index;
             }
@@ -641,16 +826,18 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
       }
     }
   } 
-  p->error = "Unterminated node";
+  if( p->error == NULL )
+    p->error = "Unterminated node";
   return 0;
 }
 
 static int uxml_parse_doc( uxml_t *p )
 {
-  int *c;
+  int *c = p->c + 3;
+  int *escape = p->escape + 3;
   int root = 0;
 
-  while( uxml_getc( p, &c ) )
+  while( uxml_getc( p ) )
   {
     if( p->state == NONE )
     {
@@ -664,7 +851,7 @@ static int uxml_parse_doc( uxml_t *p )
         }
         else
         {
-          p->error = "Multiple root";
+          p->error = "Multiple root node";
           return 0;
         }
       }
@@ -694,6 +881,13 @@ static int uxml_parse_doc( uxml_t *p )
       {
         p->state = NONE;
       }
+    }
+  }
+  if( root == 0 )
+  {
+    if( p->error == NULL )
+    {
+      p->error = "No root node";
     }
   }
   return root;
