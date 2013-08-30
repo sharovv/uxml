@@ -96,11 +96,11 @@ struct _uxml_node_t
   int type;            /* element's type - XML_NODE, XML_ATTR, XML_INST */
   int name;            /* element's name */
   int content;         /* element's content / attribute value */
+  int size;            /* size of element's content */
   uxml_t *instance;    /* UXML instance */
   int parent;          /* index of parent element */
   int child;           /* index of first child element (for XML_NODE only), 0 means no child */
   int next;            /* index of next element (not for XML_INST), 0 means last element */
-  int attr;            /* index of first attribute (not for XML_ATTR), 0 - no attribute(s) */
 };
 
 #define isdigit( c ) (c>='0'&&c<='9')
@@ -283,10 +283,10 @@ static int uxml_parse_inst( uxml_t *p )
     n->type = XML_INST;                /* type of node */
     n->name = p->text_index;           /* name of instruction */
     n->content = 0;                    /* there is no content, tag only */
+    n->size = 0;                       /* size of content is 0 */
     n->instance = p;                   /* our instance */
     n->parent = 0;                     /* no parent */
     n->child = 0;                      /* no child node(s) */
-    n->attr = 0;                       /* and no attributes yet */
   }                                    
   p->node_index++;                     /* next node */
                                        
@@ -316,9 +316,9 @@ static int uxml_parse_inst( uxml_t *p )
         p->state = INST_ATTR_NAME;     /* go to new state */
         if( n != NULL )                /* while real parsing */
         {
-          if( n->attr == 0 )           /* and no one attribute was parsed yet */
+          if( n->child == 0 )          /* and no one attribute was parsed yet */
           {
-            n->attr = p->node_index;   /* store attribute index */ 
+            n->child = p->node_index;  /* store attribute index */ 
           }
         }
         if( a != NULL )                /* if it is not first attribute */
@@ -331,11 +331,11 @@ static int uxml_parse_inst( uxml_t *p )
           a->type = XML_ATTR;          /* this is attribute node */
           a->name = p->text_index;     /* name of attribute */
           a->content = 0;              /* add content later */
+          a->size = 0;                 /* add size of content */
           a->instance = p;             /* our instance */
           a->parent = node_index;      /* parent process instruction */
           a->child = 0;                /* attribute have no chid nodes */
           a->next = 0;                 /* no next node (yet) */
-          a->attr = 0;                 /* and no more attributes */
         }
         p->node_index++;
         if( p->text != NULL )          /* if text buffer present, */
@@ -429,6 +429,10 @@ static int uxml_parse_inst( uxml_t *p )
           p->text[ p->text_index ] = c[0]; /* store next value character */
         }
         p->text_index++;               /* next byte for value */
+        if( a != NULL )
+        {
+          a->size++;
+        }
       }
     }
     else if( p->state == INST_ATTR_VALUE_SQ )
@@ -445,6 +449,10 @@ static int uxml_parse_inst( uxml_t *p )
           p->text[ p->text_index ] = c[0]; /* store next value character */
         }
         p->text_index++;               /* next byte for value */
+        if( a != NULL )
+        {
+          a->size++;
+        }
       }
     }
   }
@@ -479,10 +487,10 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
     n->type = XML_NODE;                /* type of node */
     n->name = p->text_index;           /* name of node */
     n->content = 0;                    /* there is no content yet */
+    n->size = 0;
     n->instance = p;                   /* our instance */
     n->parent = parent_node;           /* no parent */
     n->child = 0;                      /* no child node(s) yet */
-    n->attr = 0;                       /* and no attributes yet */
   }                                    
   p->node_index++;                     /* next node */
 
@@ -544,9 +552,9 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
         p->state = NODE_ATTR_NAME;     /* go to new state */
         if( n != NULL )                /* while real parsing */
         {
-          if( n->attr == 0 )           /* and no one attribute was parsed yet */
+          if( n->child == 0 )          /* and no one attribute was parsed yet */
           {
-            n->attr = p->node_index;   /* store attribute index */ 
+            n->child = p->node_index;  /* store attribute index */ 
           }
         }
         if( a != NULL )                /* if it is not first attribute */
@@ -559,12 +567,13 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
           a->type = XML_ATTR;          /* this is attribute node */
           a->name = p->text_index;     /* name of attribute */
           a->content = 0;              /* add content later */
+          a->size = 0;
           a->instance = p;             /* our instance */
           a->parent = node_index;      /* parent process instruction */
           a->child = 0;                /* attribute have no chid nodes */
           a->next = 0;                 /* no next node (yet) */
-          a->attr = 0;                 /* and no more attributes */
         }
+        last_child = p->node_index;    /* new last child */
         p->node_index++;
         if( p->text != NULL )          /* if text buffer present, */
         {
@@ -668,6 +677,10 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
           p->text[ p->text_index ] = c[0]; /* store next value character */
         }
         p->text_index++;               /* next byte for value */
+        if( a != NULL )
+        {
+          a->size++;
+        }
       }
     }
     else if( p->state == NODE_ATTR_VALUE_SQ )
@@ -684,6 +697,10 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
           p->text[ p->text_index ] = c[0]; /* store next value character */
         }
         p->text_index++;               /* next byte for value */
+        if( a != NULL )
+        {
+          a->size++;
+        }
       }
     }
     else if( p->state == NODE_CONTENT_TRIM || p->state == NODE_CONTENT )
@@ -761,6 +778,10 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
                 p->text[ p->text_index ] = ' '; /* store one space instead several */
               }
               p->text_index++;
+              if( n != NULL )
+              {
+                n->size++;
+              }
             }
             else
             {
@@ -771,6 +792,10 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
               p->text[ p->text_index ] = c[0];
             }
             p->text_index++;               /* next character */
+            if( n != NULL )
+            {
+              n->size++;
+            }
             content_end = p->text_index;   /* and content's end */
           }
         }
@@ -787,6 +812,10 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
               p->text[ p->text_index ] = c[0];
             }
             p->text_index++;             /* next character */
+            if( n != NULL )
+            {
+              n->size++;
+            }
             content_end = p->text_index; /* and content's end */
           }
         }
@@ -986,11 +1015,6 @@ void uxml_free( uxml_node_t *root )
   free( root->instance );
 }
 
-uxml_node_t *uxml_first_attr( uxml_node_t *node )
-{
-  return node->attr == 0 ? NULL: node->instance->node + node->attr;
-}
-
 uxml_node_t *uxml_child( uxml_node_t *node )
 {
   return node->child == 0 ? NULL: node->instance->node + node->child;
@@ -1001,25 +1025,108 @@ uxml_node_t *uxml_next( uxml_node_t *node )
   return node->next == 0 ? NULL: node->instance->node + node->next;
 }
 
-const char *uxml_attr( uxml_node_t *node, const char *name )
+uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
 {
   uxml_t *p = node->instance;
-  int i = node->attr;
+  const char *path = ipath, *s1, *s2;
+  int i, k, n = node - p->node;
 
-  while( i != 0 && p->node[i].type == XML_ATTR )
+  if( path == NULL )
   {
-    if( strcmp( p->text + p->node[i].name, name ) == 0 )
-    {
-      return p->text + p->node[i].content;
-    }
-    i++;
+    path = "";
   }
-  return "";
+  if( path[0] == '/' )
+  {
+    n = 0;
+    path++;
+  }
+  for( s1 = path, s2 = path; *s2 != 0; s2++ )
+  {
+    if( *s2 == '/' )
+    {
+      if( s1 == s2 )
+      {
+        s1 = s2 + 1;
+        continue;
+      }
+      if( (s2 - s1) == 2 )
+      {
+        if( s1[0] == '.' && s1[1] == '.' )
+        {
+          if( p->node[n].parent == 0 )
+          {
+            return NULL;
+          }
+          n = p->node[n].parent;
+          s1 = s2 + 1;
+          continue;
+        }
+      }
+      for( k = ((n == 0) ? p->node[0].next: p->node[n].child); k != 0; k = p->node[k].next )
+      {
+        for( i = 0; i != (s2 - s1); i++ )
+        {
+          if( s1[i] != p->text[ p->node[k].name + i ] )
+            break;
+        }
+        if( i == (s2 - s1) && p->text[ p->node[k].name + i ] == 0 )
+        {
+          n = k;
+          s1 = s2 + 1;
+          break;
+        }
+      }
+      if( k == 0 )
+      {
+        return NULL;
+      }
+    }
+  }
+  if( s2 != s1 )
+  {
+    if( (s2 - s1) == 2 )
+    {
+      if( s1[0] == '.' && s1[1] == '.' )
+      {
+        if( p->node[n].parent == 0 )
+        {
+          return NULL;
+        }
+        return p->node + p->node[n].parent;
+      }
+    }
+    for( k = ((n == 0) ? p->node[0].next: p->node[n].child); k != 0; k = p->node[k].next )
+    {
+      for( i = 0; i != (s2 - s1); i++ )
+      {
+        if( s1[i] != p->text[ p->node[k].name + i ] )
+          break;
+      }
+      if( i == (s2 - s1) && p->text[ p->node[k].name + i ] == 0 )
+      {
+        n = k;
+        s1 = s2 + 1;
+        break;
+      }
+    }
+    if( k == 0 )
+    {
+      return NULL;
+    }
+  }
+  return p->node + n;
 }
 
-const char *uxml_content( uxml_node_t *node )
+const char *uxml_content( uxml_node_t *node, const char *path )
 {
-  return node->instance->text + node->content;
+  uxml_node_t *n = uxml_node( node, path );
+  return node->instance->text + (n == NULL ? 0: n->content );
+}
+
+int uxml_content_size( uxml_node_t *node, const char *path )
+{
+  uxml_node_t *n = uxml_node( node, path );
+  return (n == NULL) ? 0: n->size;
 }
 
 #include <stdio.h>
@@ -1065,11 +1172,12 @@ void uxml_dump_list( uxml_node_t *root )
 
   for( i = 0; i < p->nodes_count; i++ )
   {
-    printf( "%d: %s name=\"%s\" content=\"%s\" parent=%d child=%d next=%d attr=%d\n",
+    printf( "%d: %s name=\"%s\" content=\"%s\" size=%d parent=%d child=%d next=%d\n",
       i, 
       p->node[i].type == XML_NODE ? "node": (p->node[i].type == XML_ATTR ? "attr": (p->node[i].type == XML_INST ? "inst": "????")),
       p->text + p->node[i].name,
       p->text + p->node[i].content,
-      p->node[i].parent, p->node[i].child, p->node[i].next, p->node[i].attr );
+      p->node[i].size,
+      p->node[i].parent, p->node[i].child, p->node[i].next );
   }
 }

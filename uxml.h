@@ -11,6 +11,7 @@ typedef struct _uxml_error_t
 
 /*! Parse XML data from memory
  *
+ * Buffer must contain valid XML data include header.
  * \param xml_data - pointer buffer with XML data, may be zero-terminated;
  * \param xml_length - length of XML data in buffer \c xml_data;
  * \param error - pointer to structure, which will be fill with error 
@@ -30,12 +31,49 @@ uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error );
 
 /*! Get node's content
  *
- * \param node - node's pointer.
+ * Return pointer to content of the specified node - element or attribute.
+ * There is no differences between two forms of following XML definitions,
+ * with attributes:
+ * \verbatim
+<node attribute="value"/>
+\endverbatim
+ * and with child node:
+ * \verbatim
+<node><attribute>value</attribute></node>
+\endverbatim
+ * Getting attribute value and content of node are the same.
+ * Node is specified by the path. 
+ * The path is the equivalent to UNIX filesystem path.
+ * This path consist of name's set, separated with '/' characters.
+ * If first character of path is '/', 
+ * then path is considered as absolute from root of whole XML,
+ * regardrless of current node.
+ * And else, if path's first character is not '/', 
+ * then path is relative from current node.
+ * Also, special characters ".." instead name means the parent node's access.
+ * When current node's contents is needed, the path must point to
+ * empty string or to NULL.
+ * Returned pointer is pointed to node content.
+ * This content are consider as constant, and valid until
+ * parsed XML will free by \c uxml_free call.
+ * \param node - node's pointer;
+ * \param path - node's path. 
  * \return pointer to node's content.
- * Content is a zero-terminated string.
- * This pointer are valid until \c uxml_free called.
  */
-const char *uxml_content( uxml_node_t *node );
+const char *uxml_content( uxml_node_t *node, const char *path );
+
+/*! Get the size of node's content
+ *
+ * \param node - node's pointer.
+ * \return content size in bytes 
+ * (length of zero-terminated string).
+ */
+int uxml_content_size( uxml_node_t *node, const char *path );
+
+/*! Get node by path
+ *
+ */
+uxml_node_t *uxml_node( uxml_node_t *node, const char *path );
 
 /*! Get node's name
  *
@@ -46,23 +84,11 @@ const char *uxml_content( uxml_node_t *node );
  */
 const char *uxml_name( uxml_node_t *node );
 
-/*! Get node's first attribute
- *
- * \param node - node's pointer.
- * \return attribute's node.
- * The content of this node is the value of attribute,
- * that can aquire through \c uxml_content call.
- * The name of this is equal to the name attribute,
- * and can be aquired by \c uxml_name call.
- * Others attributes can be accessed by \c uxml_next calls.
- * Also, this node cannot have childred node.
- */
-uxml_node_t *uxml_first_attr( uxml_node_t *node );
-
 /*! Get first node's child
  *
  * \param node - node's pointer.
- * \return First child of a node, or NULL if there is no children of this node. 
+ * \return First child of a node (element or attribute),
+ * or NULL if there is no children of this node. 
  * Other children nodes can be obtained by sequence of \c uxml_next calls.
  */
 uxml_node_t *uxml_child( uxml_node_t *node );
@@ -74,14 +100,9 @@ uxml_node_t *uxml_child( uxml_node_t *node );
  */
 uxml_node_t *uxml_next( uxml_node_t *node );
 
-/*! Get attribute value
- *
- * \param node - node's pointer;
- * \name - name of attribute.
- * \return pointer to zero-teminated string with attribute's value,
- * or pointer to empty string if no there is no attribute with specified name.
+/*! Add child node
  */
-const char *uxml_attr( uxml_node_t *node, const char *name );
+int uxml_add_child( uxml_node_t *root, uxml_node_t *child );
 
 /*! Free XML tree
  *
@@ -89,6 +110,10 @@ const char *uxml_attr( uxml_node_t *node, const char *name );
  * Frees whole XML tree, and no nodes will be accessed after this call.
  */
 void uxml_free( uxml_node_t *root );
+
+/*! Return dump of whole XML
+ */
+char *uxml_dump( uxml_node_t *root );
 
 void uxml_dump_list( uxml_node_t *root );
 
