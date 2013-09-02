@@ -74,15 +74,15 @@ enum { XML_NONE, XML_NODE, XML_ATTR, XML_INST };
 
 typedef struct _uxml_t
 {
-  const char *xml;         /* буфер XML-данных на этапе парсинга */
-  int xml_index;     /* индекс текущего байта XML-данных на этапе парсинга */
-  int xml_size;      /* размер данных в буфере XML, байт */
-  char *text;        /* буфер текстовых данных, извлеченных из XML */
-  int text_index;    /* текущий записываемый байт в буфер на этапе парсинга*/
-  int text_size;     /* размер текста в буфере, байт */
+  const char *xml;   /* original XML data */
+  int xml_index;     /* current character when parse */
+  int xml_size;      /* size of original XML data */
+  char *text;        /* textual data, extracted from original XML */
+  int text_index;    /* current write index */
+  int text_size;     /* text data size, in bytes */
   uxml_node_t *node; /* array of nodes, first element - emtpy, second element - root node */
-  int node_index;    /* текущий элемент на этапе парсинга */
-  int nodes_count;   /* количество элементов в XML данных*/
+  int node_index;    /* current node while parse */
+  int nodes_count;   /* count of nodes */
   int state;         /* current state */
   int c[4];          /* queue of last 4 characters */
   int escape[4];     /* escape flags for last 4 characters */
@@ -107,6 +107,9 @@ struct _uxml_node_t
 #define isalpha( c ) ((c>='A'&&c<='Z')||(c>='a'&&c<='z'))
 #define isspace( c ) (c==' '||c=='\n'||c=='\t'||c=='\r')
 
+/*
+ * Get character, dispatch escape sequences in contents and attributes
+ */
 static int uxml_getc( uxml_t *p )
 {
   int i, t, code = 0, dec = 0, hex = 0, v = 0;
@@ -1037,7 +1040,7 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
   }
   if( path[0] == '/' )
   {
-    n = 0;
+    n = p->node[0].next;
     path++;
   }
   for( s1 = path, s2 = path; *s2 != 0; s2++ )
@@ -1062,7 +1065,7 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
           continue;
         }
       }
-      for( k = ((n == 0) ? p->node[0].next: p->node[n].child); k != 0; k = p->node[k].next )
+      for( k = p->node[n].child; k != 0; k = p->node[k].next )
       {
         for( i = 0; i != (s2 - s1); i++ )
         {
@@ -1095,7 +1098,7 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
         return p->node + p->node[n].parent;
       }
     }
-    for( k = ((n == 0) ? p->node[0].next: p->node[n].child); k != 0; k = p->node[k].next )
+    for( k = p->node[n].child; k != 0; k = p->node[k].next )
     {
       for( i = 0; i != (s2 - s1); i++ )
       {

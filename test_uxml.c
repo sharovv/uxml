@@ -39,10 +39,10 @@ int test_navigate()
     return print_error( &e );
 
   printf( "root content=\"%s\"\n", uxml_content( root, "" ) );
-  printf( "/nodeR/attrR1=\"%s\"\n", uxml_content( root, "/nodeR/attrR1" ) );
+  printf( "/attrR1=\"%s\"\n", uxml_content( root, "/attrR1" ) );
   printf( "attrR1=\"%s\"\n", uxml_content( root, "attrR1" ) );
-  printf( "/nodeR/nodeA/attrA1=\"%s\"\n", uxml_content( root, "/nodeR/nodeA/attrA1" ) );
-  node = uxml_node( root, "/nodeR/nodeA" );
+  printf( "/nodeA/attrA1=\"%s\"\n", uxml_content( root, "/nodeA/attrA1" ) );
+  node = uxml_node( root, "/nodeA" );
   printf( "attrA1=\"%s\"\n", uxml_content( node, "attrA1" ) );
   printf( "..=\"%s\"\n", uxml_content( node, ".." ) );
   printf( "../attrR1=\"%s\"\n", uxml_content( node, "../attrR1" ) );
