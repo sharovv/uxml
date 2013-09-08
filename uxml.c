@@ -74,10 +74,10 @@ enum { XML_NONE, XML_NODE, XML_ATTR, XML_INST };
 
 typedef struct _uxml_t
 {
-  const char *xml;   /* original XML data */
+  const unsigned char *xml;   /* original XML data */
   int xml_index;     /* current character when parse */
   int xml_size;      /* size of original XML data */
-  char *text;        /* textual data, extracted from original XML */
+  unsigned char *text;        /* textual data, extracted from original XML */
   int text_index;    /* current write index */
   int text_size;     /* text data size, in bytes */
   uxml_node_t *node; /* array of nodes, first element - emtpy, second element - root node */
@@ -959,6 +959,14 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
   p->column = 1;
   p->error = NULL;
 
+  if( p->xml_size >= 3 )               /* if we have 3 bytes at least, */
+  {                                    /* check for UTF-8 byte order mark */
+    if( p->xml[0] == 0xEF && p->xml[1] == 0xBB && p->xml[2] == 0xBF )
+    {
+      p->xml += 3;                     /* simple skip BOM */
+      p->xml_size -= 3;
+    }
+  }
   if( !uxml_parse_doc( p ) )
   {
     if( error != NULL )
@@ -999,6 +1007,14 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
   p->column = 1;
   p->error = NULL;
 
+  if( p->xml_size >= 3 )               /* if we have 3 bytes at least */
+  {                                    /* check for UTF-8 byte order mark */
+    if( p->xml[0] == 0xEF && p->xml[1] == 0xBB && p->xml[2] == 0xBF )
+    {
+      p->xml += 3;                     /* simple skip BOM */
+      p->xml_size -= 3;
+    }
+  }
   if( (i = uxml_parse_doc( p )) == 0 )
   {
     if( error != NULL )
