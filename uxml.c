@@ -382,7 +382,7 @@ static int uxml_parse_inst( uxml_t *p )
         p->text_index++;               /* go to next character */
       }
     }
-    else if( p->state == NODE_ATTR_EQ )
+    else if( p->state == INST_ATTR_EQ )
     {
       if( c[0] == '=' )
       {
@@ -1177,7 +1177,7 @@ void uxml_dump_list( uxml_node_t *root )
   {
     printf( "%d: %s name=\"%s\" content=\"%s\" size=%d parent=%d child=%d next=%d\n",
       i, 
-      p->node[i].type == XML_NODE ? "node": (p->node[i].type == XML_ATTR ? "attr": (p->node[i].type == XML_INST ? "inst": "????")),
+      p->node[i].type == XML_NODE ? "node": (p->node[i].type == XML_ATTR ? "attr": (p->node[i].type == XML_INST ? "inst": (p->node[i].type == XML_NONE ? "none": "????"))),
       p->text + p->node[i].name,
       p->text + p->node[i].content,
       p->node[i].size,
