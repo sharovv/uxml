@@ -69,7 +69,7 @@ enum { NONE,
 
 */
 
-/* тип элемента - узел, атрибут, инструкция */
+/* entity type - node, attribute or process instruction */
 enum { XML_NONE, XML_NODE, XML_ATTR, XML_INST };
 
 typedef struct _uxml_t
@@ -80,9 +80,11 @@ typedef struct _uxml_t
   unsigned char *text;        /* textual data, extracted from original XML */
   int text_index;    /* current write index */
   int text_size;     /* text data size, in bytes */
+  int text_allocated;/* allocated size for text data */
   uxml_node_t *node; /* array of nodes, first element - emtpy, second element - root node */
   int node_index;    /* current node while parse */
   int nodes_count;   /* count of nodes */
+  int nodes_allocated;/* allocated count for nodes */
   int state;         /* current state */
   int c[4];          /* queue of last 4 characters */
   int escape[4];     /* escape flags for last 4 characters */
@@ -1147,6 +1149,96 @@ int uxml_content_size( uxml_node_t *node, const char *path )
   uxml_node_t *n = uxml_node( node, path );
   return (n == NULL) ? 0: n->size;
 }
+
+int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
+{
+  uxml_t *p = node->instance;
+  uxml_t *c = child->instance;
+  int i, j, np, nc, k, q;
+  unsigned char *t, *t0 = NULL;
+  uxml_node_t *n, *n0 = NULL, q;
+
+  k = (int)(child - c->node);
+
+  if( p->text_allocated == 0 )         /* if no addition was maid before */
+  {
+    for( i = 1; i <= (p->text_size + c->text_size); i <<= 1 ); /* calculate needed size as power of 2 */
+  }
+  else
+  {
+    t0 = p->text;                      /* save text pointer, it must be free later */
+    for( i = p->text_allocated; i <= (p->text_size + c->text_size); i <<= 1 ); /* new size */
+  }   
+  if( i != p->text_allocated )         /* if size changed */
+  {
+    if( (p->text = malloc( i )) == NULL )    /* reserve new memory block */
+    {
+      p->text = t0;
+      return 0;
+    }
+  }
+
+  if( p->nodes_allocated == 0 )        /* if no addition was maid before */
+  {
+    for( j = 1; j <= (p->nodes_count + c->nodes_count); j <<= 1 );
+  }
+  else
+  {
+    n0 = p->node;                      /* save node pointer, to free it later */
+    for( j = p->nodes_allocated; j <= (p->nodes_count + c->nodes_count); j <<= 1 );
+  }
+  if( (p->node = malloc( sizeof( uxml_node_t ) * j )) == NULL ) /* new memory block */
+  {
+    free( p->text );                         /* insufficient memory, frees text block */
+    p->text = t0;
+    p->node = n0;
+    return 0;
+  }
+  memcpy( p->text + p->text_index, c->text, c->text_index );
+  for( np = p->nodes_count, nc = 0; nc < c->nodes_count; np++, nc++ )
+  {
+    p->node[ np ].type = c->node[ nc ].type;
+    p->node[ np ].name = ((c->node[ nc ].name == 0) ? 0: (p->text_index + c->node[ nc ].name));
+    p->node[ np ].content = ((c->node[ nc ].content == 0) ? 0: (p->text_index + c->node[ nc ].content));
+    p->node[ np ].size = c->node[ nc ].size;
+    p->node[ np ].instance = p;
+    p->node[ np ].parent = ((c->node[ nc ].parent == 0) ? 0: (c->node[ nc ].parent + p->nodes_count);
+    p->node[ np ].child  = ((c->node[ nc ].child  == 0) ? 0: (c->node[ nc ].child  + p->nodes_count);
+    p->node[ np ].next   = ((c->node[ nc ].next   == 0) ? 0: (c->node[ nc ].next   + p->nodes_count);
+  }
+  if( node->child == 0 )
+  {
+    node->child = p->nodes_count + k;
+    p->node[ p->nodes_count + k ].parent = (int)(node - p->node);
+
+  }
+  else
+  {
+    for( q = node->child; p->node[ q ].next != 0; q = p->node[ q ].next );
+    p->node[ q ].next = p->nodes_count + k;
+    p->node[ p->nodes_count + k ].parent = p->node[ q ].parent;
+  }
+  p->text_allocated = i;
+  p->text_size += c->text_size;
+  
+  p->nodes_allocated = j;
+  p->nodes_count += c->nodes_count;
+
+  ///////
+  
+  if( t0 != NULL )
+  {
+    free( t0 );
+  }
+  if( n0 != NULL )
+  {
+    free( n0 );
+  }
+  return 1;
+}
+
+
+
 
 #include <stdio.h>
 
