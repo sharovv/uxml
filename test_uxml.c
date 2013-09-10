@@ -38,7 +38,7 @@ int test_navigate()
   if( (root = uxml_parse( xml, sizeof( xml ), &e )) == NULL ) 
     return print_error( &e );
 
-  printf( "root content=\"%s\"\n", uxml_content( root, "" ) );
+  printf( "root content=\"%s\"\n", uxml_content( root, NULL ) );
   printf( "/attrR1=\"%s\"\n", uxml_content( root, "/attrR1" ) );
   printf( "attrR1=\"%s\"\n", uxml_content( root, "attrR1" ) );
   printf( "/nodeA/attrA1=\"%s\"\n", uxml_content( root, "/nodeA/attrA1" ) );
@@ -49,6 +49,44 @@ int test_navigate()
   printf( "../nodeB=\"%s\"\n", uxml_content( node, "../nodeB" ) );
   printf( "../nodeB/attrB1=\"%s\"\n", uxml_content( node, "../nodeB/attrB1" ) );
   printf( "../nodeB/attrB2=\"%s\"\n", uxml_content( node, "../nodeB/attrB2" ) );
+  uxml_free( root );
+  return 1;
+}
+
+int test_add()
+{
+  uxml_node_t *ra, *rb, *c;
+
+  const char xml_a[] = 
+    "<?xml version='1.0' encoding='UTF-8'?>\n"
+    "<nodeRA attrRA1='valueRA1'>\n"
+    "contentRA\n"
+    "<nodeA attrA1='valueA1'/>\n"
+    "<nodeB attrB1='valueB1'>contentB<attrB2>valueB2</attrB2></nodeB>\n"
+    "</nodeRA>";
+
+  const char xml_b[] = 
+    "<?xml version='1.0' encoding='UTF-8'?>\n"
+    "<nodeRB attrR1='valueRB'>\n"
+    "contentRB\n"
+    "<nodeC attrC1='valueC1'/>\n"
+    "</nodeRB>";
+
+  if( (ra = uxml_parse( xml_a, sizeof( xml_a ), &e )) == NULL ) 
+    return print_error( &e );
+
+  if( (rb = uxml_parse( xml_b, sizeof( xml_b ), &e )) == NULL ) 
+    return print_error( &e );
+
+  printf( "= a =\n" );
+  uxml_dump_list( ra );
+  printf( "= b =\n" );
+  uxml_dump_list( rb );
+  printf( "= a + b =\n" );
+
+  c = uxml_node( rb, "/nodeC" );
+  uxml_add_child( ra, c );
+  uxml_dump_list( ra );
 
   return 1;
 }
@@ -107,5 +145,6 @@ main()
   if( !test( test_nodes ) ) return 1;
   if( !test( test_escape ) ) return 1;
   if( !test_navigate() ) return 1;
+  if( !test_add() ) return 1;
   return 0;
 }

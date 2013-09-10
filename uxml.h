@@ -70,12 +70,19 @@ uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error );
  * And else, if path's first character is not '/', 
  * then path is relative from specified node.
  * Also, special characters ".." instead the name means the parent node's access.
- * When current node's contents is needed, the path must point to
- * empty string or to NULL.
- * Returned pointer is pointed to node's content.
- * This content is considered as constant, and valid until
- * parsed XML will be released by \c uxml_free call.
- * \param node - node's pointer, no matter - root or branch;
+ * When content of specified \c node is needed, the path must point to
+ * empty string "" or to NULL.
+ * Returned pointer is pointed to node content.
+ * This content is concantenated from all parts, 
+ * separated by child nodes or comment, and with all stripped spaces. 
+ * For example, content of the \c node_a:
+ * \verbatim
+<node_a>  content1  <node_b/>  content2  <!-- comment -->  content3   </node_a>
+\endverbatim
+ * will result to "content1 content2 content3".
+ * This content are consider as constant, and valid until
+ * parsed XML will free by \c uxml_free call.
+ * \param node - node's pointer;
  * \param path - node's path. 
  * \return pointer to node's content.
  */

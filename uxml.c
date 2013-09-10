@@ -952,11 +952,14 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
   p->text = NULL;
   p->text_index = 0;
   p->text_size = 0;
+  p->text_allocated = 0;
   p->node = NULL;
   p->node_index = 1;
   p->nodes_count = 1;
+  p->nodes_allocated = 0;
   p->state = NONE;
   p->c[0] = p->c[1] = p->c[2]= p->c[3] = 0;
+  p->escape[0] = p->escape[1] = p->escape[2] = p->escape[3] = 0;
   p->line = 1;
   p->column = 1;
   p->error = NULL;
@@ -1154,10 +1157,15 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
 {
   uxml_t *p = node->instance;
   uxml_t *c = child->instance;
-  int i, j, np, nc, k, q;
-  unsigned char *t, *t0 = NULL;
-  uxml_node_t *n, *n0 = NULL, q;
+  int i, j, np, nc, k, q, an, at;
+  unsigned char *t0 = NULL;
+  uxml_node_t *n0 = NULL;
 
+  at = p->text_allocated;
+  an = p->nodes_allocated;
+
+  t0 = p->text;                      /* save text pointer */
+  n0 = p->node;                      /* save node pointer */
   k = (int)(child - c->node);
 
   if( p->text_allocated == 0 )         /* if no addition was maid before */
@@ -1166,7 +1174,6 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
   }
   else
   {
-    t0 = p->text;                      /* save text pointer, it must be free later */
     for( i = p->text_allocated; i <= (p->text_size + c->text_size); i <<= 1 ); /* new size */
   }   
   if( i != p->text_allocated )         /* if size changed */
@@ -1184,7 +1191,6 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
   }
   else
   {
-    n0 = p->node;                      /* save node pointer, to free it later */
     for( j = p->nodes_allocated; j <= (p->nodes_count + c->nodes_count); j <<= 1 );
   }
   if( (p->node = malloc( sizeof( uxml_node_t ) * j )) == NULL ) /* new memory block */
@@ -1194,17 +1200,19 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
     p->node = n0;
     return 0;
   }
-  memcpy( p->text + p->text_index, c->text, c->text_index );
+  memcpy( p->text, t0, p->text_size );
+  memcpy( p->text + p->text_size, c->text, c->text_size );
+  memcpy( p->node, n0, sizeof( uxml_node_t ) * p->nodes_count );
   for( np = p->nodes_count, nc = 0; nc < c->nodes_count; np++, nc++ )
   {
     p->node[ np ].type = c->node[ nc ].type;
-    p->node[ np ].name = ((c->node[ nc ].name == 0) ? 0: (p->text_index + c->node[ nc ].name));
-    p->node[ np ].content = ((c->node[ nc ].content == 0) ? 0: (p->text_index + c->node[ nc ].content));
+    p->node[ np ].name = ((c->node[ nc ].name == 0) ? 0: (p->text_size + c->node[ nc ].name));
+    p->node[ np ].content = ((c->node[ nc ].content == 0) ? 0: (p->text_size + c->node[ nc ].content));
     p->node[ np ].size = c->node[ nc ].size;
     p->node[ np ].instance = p;
-    p->node[ np ].parent = ((c->node[ nc ].parent == 0) ? 0: (c->node[ nc ].parent + p->nodes_count);
-    p->node[ np ].child  = ((c->node[ nc ].child  == 0) ? 0: (c->node[ nc ].child  + p->nodes_count);
-    p->node[ np ].next   = ((c->node[ nc ].next   == 0) ? 0: (c->node[ nc ].next   + p->nodes_count);
+    p->node[ np ].parent = ((c->node[ nc ].parent == 0) ? 0: (c->node[ nc ].parent + p->nodes_count));
+    p->node[ np ].child  = ((c->node[ nc ].child  == 0) ? 0: (c->node[ nc ].child  + p->nodes_count));
+    p->node[ np ].next   = ((c->node[ nc ].next   == 0) ? 0: (c->node[ nc ].next   + p->nodes_count));
   }
   if( node->child == 0 )
   {
@@ -1214,7 +1222,11 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
   }
   else
   {
-    for( q = node->child; p->node[ q ].next != 0; q = p->node[ q ].next );
+    q = node->child;
+    while( p->node[ q ].next != 0 )
+    {
+      q = p->node[ q ].next;
+    }
     p->node[ q ].next = p->nodes_count + k;
     p->node[ p->nodes_count + k ].parent = p->node[ q ].parent;
   }
@@ -1226,11 +1238,11 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
 
   ///////
   
-  if( t0 != NULL )
+  if( at != 0 )
   {
     free( t0 );
   }
-  if( n0 != NULL )
+  if( an != 0 )
   {
     free( n0 );
   }
