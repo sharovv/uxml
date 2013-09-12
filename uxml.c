@@ -91,6 +91,9 @@ typedef struct _uxml_t
   int line;          /* current line, freeze at error position */
   int column;        /* current column, freeze at error position */
   const char *error; /* error's text */      
+  unsigned char *dump;
+  int dump_size;
+  int dump_index;
 } uxml_t;
 
 struct _uxml_node_t
@@ -963,6 +966,8 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
   p->line = 1;
   p->column = 1;
   p->error = NULL;
+  p->dump = NULL;
+  p->dump_size = 0;
 
   if( p->xml_size >= 3 )               /* if we have 3 bytes at least, */
   {                                    /* check for UTF-8 byte order mark */
@@ -1236,8 +1241,6 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
   p->nodes_allocated = j;
   p->nodes_count += c->nodes_count;
 
-  ///////
-  
   if( at != 0 )
   {
     free( t0 );
@@ -1249,10 +1252,142 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
   return 1;
 }
 
+static void uxml_putchar( uxml_t *p, const int c )
+{
+  if( p->dump != NULL && p->dump_index < p->dump_size )
+    p->dump[ p->dump_index ] = (unsigned char)c;
+  p->dump_index++;
+}
 
+static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
+{
+  int i, in = 0, n;
 
+  for( i = 0; i < offset; i++ ) 
+    uxml_putchar( p, ' ' );
+
+  uxml_putchar( p, '<' );
+  if( node->type == XML_INST )
+    uxml_putchar( p, '?' );
+
+  for( i = 0; p->text[ node->name + i ] != 0; i++ )
+    uxml_putchar( p, p->text[ node->name + i ] );
+
+  for( n = node->child; n != 0; n = p->node[ n ].next )
+  {
+    switch( p->node[n].type )
+    {
+    case XML_ATTR:
+      uxml_putchar( p, ' ' );
+      for( i = 0; p->text[ p->node[n].name + i ] != 0; i++ )
+        uxml_putchar( p, p->text[ p->node[n].name + i ] );
+      uxml_putchar( p, '=' );
+      uxml_putchar( p, '\"' );
+      for( i = 0; i < p->node[n].size; i++ )
+        uxml_putchar( p, p->text[ p->node[n].content + i ] );
+      uxml_putchar( p, '\"' );
+      break;
+    case XML_NODE: in++; break;
+    default: break;
+    }
+  }
+  if( node->type == XML_INST )
+  {
+    uxml_putchar( p, '?' );
+    uxml_putchar( p, '>' );
+    uxml_putchar( p, '\n' );
+  }
+  else if( in != 0 || node->size != 0 )
+  {
+    uxml_putchar( p, '>' );
+    uxml_putchar( p, '\n' );
+    for( i = 0; i < offset + 2; i++ ) 
+      uxml_putchar( p, ' ' );
+    for( i = 0; i < node->size; i++ ) 
+      uxml_putchar( p, p->text[ node->content + i ] );
+    uxml_putchar( p, '\n' );
+    for( n = node->child; n != 0; n = p->node[ n ].next )
+    {
+      if( p->node[n].type == XML_NODE )
+      {
+        uxml_dump_internal( p, offset + 2, p->node + n );
+      }
+    }
+    for( i = 0; i < offset; i++ ) 
+      uxml_putchar( p, ' ' );
+
+    uxml_putchar( p, '<' );
+    uxml_putchar( p, '/' );
+
+    for( i = 0; p->text[ node->name + i ] != 0; i++ )
+      uxml_putchar( p, p->text[ node->name + i ] );
+
+    uxml_putchar( p, '>' );
+    uxml_putchar( p, '\n' );
+  }
+  else
+  {
+    uxml_putchar( p, '/' );
+    uxml_putchar( p, '>' );
+    uxml_putchar( p, '\n' );
+  }
+}
+
+unsigned char *uxml_dump( uxml_node_t *node )
+{
+  uxml_t *p = node->instance;
+  int i = 0;
+  unsigned char *t;
+
+  t = p->dump;
+  p->dump = NULL;
+  p->dump_index = 0;
+  for( i = 1; i < p->node[0].next; i++ )
+  {
+    if( p->node[ i ].type == XML_INST )
+    {
+      uxml_dump_internal( p, 0, p->node + i );
+    }
+  }
+  uxml_dump_internal( p, 0, p->node + (p->node[0].next) );
+  uxml_putchar( p, 0 );
+
+  p->dump = t;
+
+  if( p->dump_index == 0 )
+    return NULL;
+
+  if( p->dump_index > p->dump_size )
+  {
+    if( p->dump != NULL )
+    {
+      free( p->dump );
+      p->dump = NULL;
+    }
+    if( (p->dump = malloc( p->dump_index )) == NULL )
+      return NULL;
+    p->dump_size = p->dump_index;
+  }
+  p->dump_index = 0;
+  for( i = 1; i < p->node[0].next; i++ )
+  {
+    if( p->node[ i ].type == XML_INST )
+    {
+      uxml_dump_internal( p, 0, p->node + i );
+    }
+  }
+  uxml_dump_internal( p, 0, p->node + (p->node[0].next) );
+  uxml_putchar( p, 0 );
+  if( p->dump_index > p->dump_size )
+    return NULL;
+  return p->dump;
+}
 
 #include <stdio.h>
+
+#if defined( _MSC_VER )
+#pragma warning(disable:4996)
+#endif
 
 uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error )
 {

@@ -56,13 +56,14 @@ int test_navigate()
 int test_add()
 {
   uxml_node_t *ra, *rb, *c;
+  unsigned char *s;
 
   const char xml_a[] = 
     "<?xml version='1.0' encoding='UTF-8'?>\n"
     "<nodeRA attrRA1='valueRA1'>\n"
     "contentRA\n"
     "<nodeA attrA1='valueA1'/>\n"
-    "<nodeB attrB1='valueB1'>contentB<attrB2>valueB2</attrB2></nodeB>\n"
+    "<nodeB attrB1='valueB1' attrB2='valueB2'>contentB</nodeB>\n"
     "</nodeRA>";
 
   const char xml_b[] = 
@@ -74,6 +75,9 @@ int test_add()
 
   if( (ra = uxml_parse( xml_a, sizeof( xml_a ), &e )) == NULL ) 
     return print_error( &e );
+
+  if( (s = uxml_dump( ra )) != NULL )
+    printf( "%s", s ); 
 
   if( (rb = uxml_parse( xml_b, sizeof( xml_b ), &e )) == NULL ) 
     return print_error( &e );
@@ -87,6 +91,9 @@ int test_add()
   c = uxml_node( rb, "/nodeC" );
   uxml_add_child( ra, c );
   uxml_dump_list( ra );
+
+  if( (s = uxml_dump( ra )) != NULL )
+    printf( "%s", s ); 
 
   return 1;
 }

@@ -144,7 +144,7 @@ void uxml_free( uxml_node_t *root );
 
 /*! Get XML dump (NOT REALIZED)
  */
-char *uxml_dump( uxml_node_t *root );
+unsigned char *uxml_dump( uxml_node_t *root );
 
 void uxml_dump_list( uxml_node_t *root );
 
