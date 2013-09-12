@@ -147,5 +147,6 @@ void uxml_free( uxml_node_t *root );
 unsigned char *uxml_dump( uxml_node_t *root );
 
 void uxml_dump_list( uxml_node_t *root );
+int uxml_get_initial_allocated( uxml_node_t *root );
 
 #endif

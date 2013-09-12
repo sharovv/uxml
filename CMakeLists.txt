@@ -9,3 +9,6 @@ target_link_libraries( test_uxml uxml )
 
 add_executable( dump_xml dump_xml.c )
 target_link_libraries( dump_xml uxml )
+
+add_executable( bench_uxml bench_uxml.c )
+target_link_libraries( bench_uxml uxml )

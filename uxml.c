@@ -94,6 +94,7 @@ typedef struct _uxml_t
   unsigned char *dump;
   int dump_size;
   int dump_index;
+  int initial_allocated;
 } uxml_t;
 
 struct _uxml_node_t
@@ -995,6 +996,7 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
     return 0;
   }
   memset( v, 0, i );
+  p->initial_allocated = i;
 
   p = (uxml_t *)v;
   c = (char *)v;
@@ -1502,4 +1504,10 @@ void uxml_dump_list( uxml_node_t *root )
       p->node[i].size,
       p->node[i].parent, p->node[i].child, p->node[i].next );
   }
+}
+
+int uxml_get_initial_allocated( uxml_node_t *root )
+{
+  uxml_t *p = root->instance;
+  return p->initial_allocated;
 }

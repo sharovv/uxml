@@ -70,7 +70,7 @@ int test_add()
     "<?xml version='1.0' encoding='UTF-8'?>\n"
     "<nodeRB attrR1='valueRB'>\n"
     "contentRB\n"
-    "<nodeC attrC1='valueC1'/>\n"
+    "<nodeC attrC1='valueC1'>contentC</nodeC>\n"
     "</nodeRB>";
 
   if( (ra = uxml_parse( xml_a, sizeof( xml_a ), &e )) == NULL ) 
