@@ -61,9 +61,9 @@ int test_add()
   const char xml_a[] = 
     "<?xml version='1.0' encoding='UTF-8'?>\n"
     "<nodeRA attrRA1='valueRA1'>\n"
-    "contentRA\n"
+    "contentRA &lt;&#9;&gt;&amp;&apos;&quot;\n"
     "<nodeA attrA1='valueA1'/>\n"
-    "<nodeB attrB1='valueB1' attrB2='valueB2'>contentB</nodeB>\n"
+    "<nodeB attrB1='valueB1' attrB2='valueB2 &lt;&#9;&gt;&amp;&apos;&quot;'>contentB</nodeB>\n"
     "</nodeRA>";
 
   const char xml_b[] = 

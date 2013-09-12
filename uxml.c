@@ -809,7 +809,7 @@ static int uxml_parse_node( uxml_t *p, int parent_node )
         }
         else                           /* need to read content */        
         {
-          if( isspace( c[0] ) )        /* all empty characters will replaced with one space */
+          if( isspace( c[0] ) && !escape[0] )        /* all empty non-escaped characters will replaced with one space */
           {
             p->state = NODE_CONTENT_TRIM;
           }
@@ -1259,6 +1259,70 @@ static void uxml_putchar( uxml_t *p, const int c )
   p->dump_index++;
 }
 
+static void uxml_put_escape( uxml_t *p, const int c )
+{
+  switch( c )
+  {
+  case '<':
+    uxml_putchar( p, '&' );
+    uxml_putchar( p, 'l' );
+    uxml_putchar( p, 't' );
+    uxml_putchar( p, ';' );
+    break;
+  case '>':
+    uxml_putchar( p, '&' );
+    uxml_putchar( p, 'g' );
+    uxml_putchar( p, 't' );
+    uxml_putchar( p, ';' );
+    break;
+  case '&':
+    uxml_putchar( p, '&' );
+    uxml_putchar( p, 'a' );
+    uxml_putchar( p, 'm' );
+    uxml_putchar( p, 'p' );
+    uxml_putchar( p, ';' );
+    break;
+  case '\'':
+    uxml_putchar( p, '&' );
+    uxml_putchar( p, 'a' );
+    uxml_putchar( p, 'p' );
+    uxml_putchar( p, 'o' );
+    uxml_putchar( p, 's' );
+    uxml_putchar( p, ';' );
+    break;
+  case '\"':
+    uxml_putchar( p, '&' );
+    uxml_putchar( p, 'q' );
+    uxml_putchar( p, 'u' );
+    uxml_putchar( p, 'o' );
+    uxml_putchar( p, 't' );
+    uxml_putchar( p, ';' );
+    break;
+  default:
+    if( c < ' ' )
+    {
+      uxml_putchar( p, '&' );
+      uxml_putchar( p, '#' );
+      if( c < 10 )
+      {
+        uxml_putchar( p, '0' + c );
+      }
+      else
+      {
+        uxml_putchar( p, '0' + (c / 10) );
+        uxml_putchar( p, '0' + (c % 10) );
+      }
+      uxml_putchar( p, ';' );
+    }
+    else
+    {
+      uxml_putchar( p, c );
+    }
+    break;
+  }
+}
+
+
 static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
 {
   int i, in = 0, n;
@@ -1284,7 +1348,7 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
       uxml_putchar( p, '=' );
       uxml_putchar( p, '\"' );
       for( i = 0; i < p->node[n].size; i++ )
-        uxml_putchar( p, p->text[ p->node[n].content + i ] );
+        uxml_put_escape( p, p->text[ p->node[n].content + i ] );
       uxml_putchar( p, '\"' );
       break;
     case XML_NODE: in++; break;
@@ -1304,7 +1368,7 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
     for( i = 0; i < offset + 2; i++ ) 
       uxml_putchar( p, ' ' );
     for( i = 0; i < node->size; i++ ) 
-      uxml_putchar( p, p->text[ node->content + i ] );
+      uxml_put_escape( p, p->text[ node->content + i ] );
     uxml_putchar( p, '\n' );
     for( n = node->child; n != 0; n = p->node[ n ].next )
     {
