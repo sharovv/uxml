@@ -81,12 +81,47 @@ uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error );
 \endverbatim
  * will result to "content1 content2 content3".
  * This content are consider as constant, and valid until
- * parsed XML will free by \c uxml_free call.
+ * one of this calls has occured: \c uxml_free, \c uxml_add_child and \c uxml_set (!).
+ * Therefore, the call \c uxml_get can be used only to read XML data, not to write,
+ * such of initial configuration. Instead of them, call the \c uxml_copy.
  * \param node - node's pointer;
  * \param path - node's path. 
  * \return pointer to node's content.
  */
-const char *uxml_content( uxml_node_t *node, const char *path );
+const char *uxml_get( uxml_node_t *node, const char *path );
+
+/*! Copy node's content
+ *
+ * Copy content of specified node to the user buffer.
+ * This call must to use with the "read-write" access to XML data.
+ * If the node has no content, then only zero byte will be copied.
+ * \param node - node's pointer, root or branch.
+ * \param path - node's path, see \c uxml_content description.
+ * \return number of copied bytes.
+ */
+int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buffer_size );
+
+/*! Set node's content
+ *
+ * Set the content of specified node to specified value.
+ * If specified node is exist, their "modification count" increment automatically.
+ * This modification count (or "modcount") can be used to check
+ * whatever the content was changed.
+ */
+void uxml_set( uxml_node_t *node, const char *path, const char *value, const int size );
+
+/*! Get modification count
+ */
+int uxml_modcount( uxml_node_t *node, const char *path );
+
+/*! Return user's pointer
+ */
+void uxml_user( uxml_node_t *node, const char *path );
+
+/*! Set the user's pointer
+ *
+ */
+void uxml_set_user( uxml_node_t *node, const char *path );
 
 /*! Get the size of node's content
  *
@@ -95,7 +130,7 @@ const char *uxml_content( uxml_node_t *node, const char *path );
  * \return content size in bytes 
  * (length of zero-terminated string).
  */
-int uxml_content_size( uxml_node_t *node, const char *path );
+int uxml_size( uxml_node_t *node, const char *path );
 
 /*! Get node by path
  *
@@ -131,7 +166,7 @@ uxml_node_t *uxml_child( uxml_node_t *node );
  */
 uxml_node_t *uxml_next( uxml_node_t *node );
 
-/*! Add child node (NOT REALIZED)
+/*! Add child node
  */
 int uxml_add_child( uxml_node_t *node, uxml_node_t *child );
 
@@ -142,7 +177,7 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child );
  */
 void uxml_free( uxml_node_t *root );
 
-/*! Get XML dump (NOT REALIZED)
+/*! Get XML dump
  */
 unsigned char *uxml_dump( uxml_node_t *root );
 

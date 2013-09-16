@@ -107,6 +107,7 @@ struct _uxml_node_t
   int parent;          /* index of parent element */
   int child;           /* index of first child element (for XML_NODE only), 0 means no child */
   int next;            /* index of next element (not for XML_INST), 0 means last element */
+  int modcount;
 };
 
 #define isdigit( c ) (c>='0'&&c<='9')
@@ -1148,13 +1149,87 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
   return p->node + n;
 }
 
-const char *uxml_content( uxml_node_t *node, const char *path )
+const char *uxml_get( uxml_node_t *node, const char *path )
 {
   uxml_node_t *n = uxml_node( node, path );
   return node->instance->text + (n == NULL ? 0: n->content );
 }
 
-int uxml_content_size( uxml_node_t *node, const char *path )
+int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buffer_size )
+{
+  uxml_node_t *n = uxml_node( node, path );
+  int i;
+
+  if( n == NULL )
+    return 0;
+
+  i = ((n->size == 0) ? 1: n->size);
+  if( i > buffer_size && buffer_size > 1 )
+  {
+    memcpy( buffer, n->instance->text + n->content, buffer_size - 1 );
+    buffer[ buffer_size - 1 ] = 0;
+    return buffer_size;
+  }
+  else if( i <= buffer_size )
+  {
+    memcpy( buffer, n->instance->text + n->content, i );
+    return i;
+  }
+  return 0;
+}
+
+void uxml_set( uxml_node_t *node, const char *path, const char *value, const int size0 )
+{
+  uxml_node_t *n = uxml_node( node, path );
+  uxml_t *p;
+  int size = size0, i;
+  unsigned char *t;
+
+  if( n == NULL )
+    return;
+
+  p = n->instance;
+
+  if( size == 0 )
+    size = strlen( value ) + 1;
+
+  if( size > n->size )
+  {
+    if( size > (p->text_allocated - p->text_size) )
+    {
+      for( i = (p->text_allocated > p->text_size ? p->text_allocated: p->text_size); i < (p->text_size + size); i <<= 1 );
+      if( (t = malloc( i )) == NULL )
+      {
+        p->error = "malloc failed";
+        return;
+      }
+      memcpy( t, p->text, p->text_size );
+      if( p->text_allocated != 0 )
+      {
+        free( p->text );
+      }
+      p->text = t;
+      p->text_allocated = i;
+    }
+    memcpy( p->text + p->text_size, value, size );
+    n->content = p->text_size;
+    n->size = size;
+    p->text_size += size;
+  }
+  else
+  {
+    memcpy( p->text + node->content, value, size );
+  }
+  node->modcount++;
+}
+
+int uxml_modcount( uxml_node_t *node, const char *path )
+{
+  uxml_node_t *n = uxml_node( node, path );
+  return (n == NULL) ? 0: n->modcount;
+}
+
+int uxml_size( uxml_node_t *node, const char *path )
 {
   uxml_node_t *n = uxml_node( node, path );
   return (n == NULL) ? 0: n->size;
@@ -1496,14 +1571,18 @@ void uxml_dump_list( uxml_node_t *root )
 
   for( i = 0; i < p->nodes_count; i++ )
   {
-    printf( "%d: %s name=\"%s\" content=\"%s\" size=%d parent=%d child=%d next=%d\n",
+    printf( "%d: %s name=\"%s\" content=\"%s\" size=%d parent=%d child=%d next=%d",
       i, 
       p->node[i].type == XML_NODE ? "node": (p->node[i].type == XML_ATTR ? "attr": (p->node[i].type == XML_INST ? "inst": (p->node[i].type == XML_NONE ? "none": "????"))),
       p->text + p->node[i].name,
       p->text + p->node[i].content,
       p->node[i].size,
       p->node[i].parent, p->node[i].child, p->node[i].next );
+    if( p->node[i].modcount != 0 )
+      printf( " modcount=%d", p->node[i].modcount );
+    printf( "\n" );
   }
+  printf( "Total nodes: %d, text size/allocated: %d/%d\n", p->nodes_count, p->text_size, p->text_allocated );
 }
 
 int uxml_get_initial_allocated( uxml_node_t *root )

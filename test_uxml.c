@@ -38,17 +38,17 @@ int test_navigate()
   if( (root = uxml_parse( xml, sizeof( xml ), &e )) == NULL ) 
     return print_error( &e );
 
-  printf( "root content=\"%s\"\n", uxml_content( root, NULL ) );
-  printf( "/attrR1=\"%s\"\n", uxml_content( root, "/attrR1" ) );
-  printf( "attrR1=\"%s\"\n", uxml_content( root, "attrR1" ) );
-  printf( "/nodeA/attrA1=\"%s\"\n", uxml_content( root, "/nodeA/attrA1" ) );
+  printf( "root content=\"%s\"\n", uxml_get( root, NULL ) );
+  printf( "/attrR1=\"%s\"\n", uxml_get( root, "/attrR1" ) );
+  printf( "attrR1=\"%s\"\n", uxml_get( root, "attrR1" ) );
+  printf( "/nodeA/attrA1=\"%s\"\n", uxml_get( root, "/nodeA/attrA1" ) );
   node = uxml_node( root, "/nodeA" );
-  printf( "attrA1=\"%s\"\n", uxml_content( node, "attrA1" ) );
-  printf( "..=\"%s\"\n", uxml_content( node, ".." ) );
-  printf( "../attrR1=\"%s\"\n", uxml_content( node, "../attrR1" ) );
-  printf( "../nodeB=\"%s\"\n", uxml_content( node, "../nodeB" ) );
-  printf( "../nodeB/attrB1=\"%s\"\n", uxml_content( node, "../nodeB/attrB1" ) );
-  printf( "../nodeB/attrB2=\"%s\"\n", uxml_content( node, "../nodeB/attrB2" ) );
+  printf( "attrA1=\"%s\"\n", uxml_get( node, "attrA1" ) );
+  printf( "..=\"%s\"\n", uxml_get( node, ".." ) );
+  printf( "../attrR1=\"%s\"\n", uxml_get( node, "../attrR1" ) );
+  printf( "../nodeB=\"%s\"\n", uxml_get( node, "../nodeB" ) );
+  printf( "../nodeB/attrB1=\"%s\"\n", uxml_get( node, "../nodeB/attrB1" ) );
+  printf( "../nodeB/attrB2=\"%s\"\n", uxml_get( node, "../nodeB/attrB2" ) );
   uxml_free( root );
   return 1;
 }
@@ -94,6 +94,45 @@ int test_add()
 
   if( (s = uxml_dump( ra )) != NULL )
     printf( "%s", s ); 
+
+  return 1;
+}
+
+int test_set()
+{
+  uxml_node_t *a;
+  char t[16];
+
+  const char xml_a[] = 
+    "<?xml version='1.0' encoding='UTF-8'?>\n"
+    "<nodeR attrR1='valueR1'>\n"
+    "contentR\n"
+    "<nodeA attrA1='valueA1'/>\n"
+    "<nodeB attrB1='valueB1' attrB2='valueB2'>contentB</nodeB>\n"
+    "</nodeR>";
+
+  if( (a = uxml_parse( xml_a, sizeof( xml_a ), &e )) == NULL ) 
+    return print_error( &e );
+
+  printf( "=== test_set origin ===\n" );
+
+  uxml_dump_list( a );
+
+  uxml_set( a, "/nodeA", "12345", 0 );
+  uxml_set( a, "/nodeA/attrA1", "valueA1+valueA2+valueA3+valueA4+valueA5+valueA6", 0 );
+  uxml_set( a, "/nodeB", "contentB1+contentB2+contentB3+contentB4", 0 );
+  uxml_set( a, "/nodeB/attrB1", "valueB1+valueB2+valueB3+valueB4+valueB5+valueB6", 0 );
+
+  printf( "=== test_set result1 ===\n" );
+  uxml_dump_list( a );
+
+  uxml_set( a, "/nodeB/attrB2", "valueBB1+valueBB2+valueBB3+valueBB4+valueBB5+valueBB6", 0 );
+
+  printf( "=== test_set result2 ===\n" );
+  uxml_dump_list( a );
+
+  uxml_copy( a, "/nodeA", t, sizeof( t ) );
+  printf( "copy(/nodeA)=\"%s\"\n", t );
 
   return 1;
 }
@@ -153,5 +192,6 @@ main()
   if( !test( test_escape ) ) return 1;
   if( !test_navigate() ) return 1;
   if( !test_add() ) return 1;
+  if( !test_set() ) return 1;
   return 0;
 }
