@@ -357,7 +357,7 @@ static int uxml_parse_inst( uxml_t *p )
           a->fullsize = 0;             /* full size of content is 0 too */
           a->instance = p;             /* our instance */
           a->parent = p->node + node_index; /* parent process instruction */
-          a->child = NULL;                /* attribute have no chid nodes */
+          a->child = NULL;                /* attribute have no child nodes */
           a->next = NULL;                 /* no next node (yet) */
         }
         p->node_index++;
@@ -613,11 +613,11 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
         p->state = state;              /* restore outer state */
         if( p->node != NULL )
         {          
-          if( parent_node != 0 )
+          if( parent_node != NULL )
           {
-            if( p->node[ parent_node ].child == 0 )
+            if( parent_node->child == NULL )
             {
-              p->node[ parent_node ].child = node_index;
+              parent_node->child = p->node + node_index;
             }
           }
         }
@@ -746,7 +746,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
           int k = content_end - content_begin;
           int i;
 
-          i = uxml_parse_node( p, node_index ); /* parse it */
+          i = uxml_parse_node( p, p->node + node_index ); /* parse it */
           if( !i )
             return 0;
 
@@ -754,7 +754,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
           {
             if( last_child != 0 )
             {
-              p->node[ last_child ].next = i; /* set-up next field of last child node */
+              p->node[ last_child ].next = p->node + i; /* set-up next field of last child node */
             }
           }
           last_child = i;               /* new last child */
@@ -885,12 +885,12 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
         }
         if( p->node != NULL )
         {          
-          p->node[ node_index ].content = content_begin;
+          p->node[ node_index ].content = p->text + content_begin;
           if( parent_node != 0 )
           {
-            if( p->node[ parent_node ].child == 0 ) /* if this is first child */
+            if( parent_node->child == 0 ) /* if this is first child */
             {
-              p->node[ parent_node ].child = node_index; /* parent will point to it */
+              parent_node->child = p->node + node_index; /* parent will point to it */
             }
           }
         }
@@ -1046,7 +1046,7 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
   p->atext[0] = p->text;
   p->text_size[0] = p->text_index + 1;
   p->text_allocated[0] = p->text_size[0];
-  p->text_index[0] = 1;
+  p->text_index = 1;
   p->anode[0] = p->node;
   p->nodes_count[0] = p->node_index;
   p->nodes_allocated[0] = p->nodes_count[0];
@@ -1075,7 +1075,7 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
     }
     return NULL;
   }  
-  p->node[0].next = i;
+  p->node[0].next = p->node + i;
   return p->node + i;
 }
 
@@ -1205,7 +1205,7 @@ int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buff
   if( n == NULL )
     return 0;
 
-  i = ((n->size == 0) ? 1: n->size);
+  i = ((n->size == 0) ? 1: (n->size + 1));
   if( i > buffer_size && buffer_size > 1 )
   {
     memcpy( buffer, n->content, buffer_size - 1 );
@@ -1224,7 +1224,7 @@ int uxml_set( uxml_node_t *node, const char *path, const char *value, const int 
 {
   uxml_node_t *n = uxml_node( node, path );
   uxml_t *p;
-  int size = size0, i;
+  int size, i;
   unsigned char *t;
 
   if( n == NULL )
@@ -1232,10 +1232,12 @@ int uxml_set( uxml_node_t *node, const char *path, const char *value, const int 
 
   p = n->instance;
 
-  if( size == 0 )
+  if( size0 == 0 )
     size = strlen( value ) + 1;
+  else
+    size = size0 + 1;
 
-  if( size > n->fullsize )
+  if( size > (n->fullsize + 1) )
   {
     if( size > (p->text_allocated[ p->text_frag ] - p->text_size[ p->text_frag ]) )
     {
@@ -1252,14 +1254,14 @@ int uxml_set( uxml_node_t *node, const char *path, const char *value, const int 
     }
     n->content = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
     memcpy( n->content, value, size );
-    n->size = size;
-    n->fullsize = size;
+    n->size = size - 1;
+    n->fullsize = size - 1;
     p->text_size[ p->text_frag ] += size;
   }
   else
   {
     memcpy( n->content, value, size );
-    n->size = size;
+    n->size = size - 1;
   }
   n->modcount++;
   return 1;
@@ -1279,47 +1281,69 @@ int uxml_size( uxml_node_t *node, const char *path )
 
 static void uxml_add_child_count( uxml_node_t *node, int *ct, int *cn )
 {
-  *ct += (strlen( node->name ) + 1);
-  *ct += node->fullsize;
+  uxml_node_t *n;
+  (*ct) += (strlen( node->name ) + 1);
+  (*ct) += (node->fullsize + 1);
+  (*cn) += 1;
 
   for( n = node->child; n != NULL; n = n->next )
   {
-    uxml_add_child_count( n, &ct, &cn );
+    uxml_add_child_count( n, ct, cn );
   }
 }
 
-static void uxml_add_child_fill( uxml_t *p, uxml_node_t *source, uxml_node_t *parent_node )
+static uxml_node_t *uxml_add_child_fill( uxml_t *p, uxml_node_t *s, uxml_node_t *parent_node )
 {
   uxml_node_t *n = p->anode[ p->node_frag ] + p->nodes_count[ p->node_frag ];
+  uxml_node_t *last_child = NULL, *k, *c;
 
   p->nodes_count[ p->node_frag ]++;
 
   n->type = s->type;
   
-  n->name = t;
-  memcpy( t, s->name, strlen( s->name ) + 1 );
-  t += (strlen( s->name ) + 1);
+  n->name = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
+  memcpy( n->name, s->name, strlen( s->name ) + 1 );
+  p->text_size[ p->text_frag ] += (strlen( s->name ) + 1);
   
-  n->content = t;
-  memcpy( t, s->content, s->fullsize );
-  t += s->fullsize;
+  n->content = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
+  memcpy( n->content, s->content, s->fullsize + 1 );
+  p->text_size[ p->text_frag ] += (s->fullsize + 1);
 
   n->size = s->size;
   n->fullsize = s->fullsize;
   n->instance = p;
   n->parent = parent_node;
-
-
+  n->next = NULL;
+  n->child = NULL;
   
-  uxml_node_t *child;     /* index of first child element (for XML_NODE only), 0 means no child */
-  uxml_node_t *next;      /* index of next element (not for XML_INST), 0 means last element */
-  int modcount;
+  if( parent_node->child == NULL )
+  {
+    parent_node->child = n;
+  }
+  else
+  {
+    for( k = parent_node->child; k->next != NULL; k = k->next );
+    k->next = n;
+  }
+  n->modcount = s->modcount;
+
+  for( k = s->child; k != NULL; k = k->next )
+  {
+    c = uxml_add_child_fill( p, k, n );
+    if( last_child != NULL )
+    {
+      last_child->next = c;
+    }
+    last_child = c;
+  }
+  return n;
+}
 
 int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
 {
   uxml_t *p = node->instance;
   uxml_t *c = child->instance;
-  int i, j = 0, np, nc, k = 0, q, an, at;
+  int i, j = 0, k = 0;
   unsigned char *t = NULL;
   uxml_node_t *n = NULL;
 
@@ -1333,14 +1357,11 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
       p->error = "malloc failed";
       return 0;
     }
+    memset( t, 0, i );
     p->text_frag++;
     p->atext[ p->text_frag ] = t;
     p->text_allocated[ p->text_frag ] = i;
     p->text_size[ p->text_frag ] = 0;
-  }
-  else
-  {
-    t = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
   }
 
   if( k > (p->nodes_allocated[ p->node_frag ] - p->nodes_count[ p->node_frag ]) )
@@ -1351,112 +1372,13 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
       p->error = "malloc failed";
       return 0;
     }
+    memset( n, 0, sizeof( uxml_node_t ) * i );
     p->node_frag++;
     p->anode[ p->node_frag ] = n;
     p->nodes_allocated[ p->node_frag ] = i;
     p->nodes_count[ p->node_frag ] = 0;
   }
-  else
-  {
-    n = p->anode[ p->node_frag ] + p->nodes_count[ p->node_frag ];
-  }
-
-  for( k = 0; k < MAX_FRAG; k++ )
-  {
-    for( i = 0; i < c->nodes_count[ k ]; i++ )
-    {
-      n->
-
-
-
-
-
-
-
-
-  at = p->text_allocated;
-  an = p->nodes_allocated;
-
-  t0 = p->text;                      /* save text pointer */
-  n0 = p->node;                      /* save node pointer */
-  k = (int)(child - c->node);
-
-  if( p->text_allocated == 0 )         /* if no addition was maid before */
-  {
-    for( i = 1; i <= (p->text_size + c->text_size); i <<= 1 ); /* calculate needed size as power of 2 */
-  }
-  else
-  {
-    for( i = p->text_allocated; i <= (p->text_size + c->text_size); i <<= 1 ); /* new size */
-  }   
-  if( i != p->text_allocated )         /* if size changed */
-  {
-    if( (p->text = malloc( i )) == NULL )    /* reserve new memory block */
-    {
-      p->text = t0;
-      return 0;
-    }
-  }
-
-  if( p->nodes_allocated == 0 )        /* if no addition was maid before */
-  {
-    for( j = 1; j <= (p->nodes_count + c->nodes_count); j <<= 1 );
-  }
-  else
-  {
-    for( j = p->nodes_allocated; j <= (p->nodes_count + c->nodes_count); j <<= 1 );
-  }
-  if( (p->node = malloc( sizeof( uxml_node_t ) * j )) == NULL ) /* new memory block */
-  {
-    free( p->text );                         /* insufficient memory, frees text block */
-    p->text = t0;
-    p->node = n0;
-    return 0;
-  }
-  memcpy( p->text, t0, p->text_size );
-  memcpy( p->text + p->text_size, c->text, c->text_size );
-  memcpy( p->node, n0, sizeof( uxml_node_t ) * p->nodes_count );
-  for( np = p->nodes_count, nc = 0; nc < c->nodes_count; np++, nc++ )
-  {
-    p->node[ np ].type = c->node[ nc ].type;
-    p->node[ np ].name = ((c->node[ nc ].name == 0) ? 0: (p->text_size + c->node[ nc ].name));
-    p->node[ np ].content = ((c->node[ nc ].content == 0) ? 0: (p->text_size + c->node[ nc ].content));
-    p->node[ np ].size = c->node[ nc ].size;
-    p->node[ np ].instance = p;
-    p->node[ np ].parent = ((c->node[ nc ].parent == 0) ? 0: (c->node[ nc ].parent + p->nodes_count));
-    p->node[ np ].child  = ((c->node[ nc ].child  == 0) ? 0: (c->node[ nc ].child  + p->nodes_count));
-    p->node[ np ].next   = ((c->node[ nc ].next   == 0) ? 0: (c->node[ nc ].next   + p->nodes_count));
-  }
-  if( node->child == 0 )
-  {
-    node->child = p->nodes_count + k;
-    p->node[ p->nodes_count + k ].parent = (int)(node - p->node);
-
-  }
-  else
-  {
-    q = node->child;
-    while( p->node[ q ].next != 0 )
-    {
-      q = p->node[ q ].next;
-    }
-    p->node[ q ].next = p->nodes_count + k;
-    p->node[ p->nodes_count + k ].parent = p->node[ q ].parent;
-  }
-  p->text_allocated = i;
-  p->text_size += c->text_size;
-  
-  p->nodes_allocated = j;
-  p->nodes_count += c->nodes_count;
-
-  if( at != 0 )
-  {
-    free( t0 );
-  }
-  if( an != 0 )
-  {
-    free( n0 );
-  }
+  uxml_add_child_fill( p, child, node );
   return 1;
 }
 
@@ -1530,10 +1452,10 @@ static void uxml_put_escape( uxml_t *p, const int c )
   }
 }
 
-
 static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
 {
-  int i, in = 0, n;
+  int i, in = 0;
+  uxml_node_t *n;
 
   for( i = 0; i < offset; i++ ) 
     uxml_putchar( p, ' ' );
@@ -1542,21 +1464,21 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
   if( node->type == XML_INST )
     uxml_putchar( p, '?' );
 
-  for( i = 0; p->text[ node->name + i ] != 0; i++ )
-    uxml_putchar( p, p->text[ node->name + i ] );
+  for( i = 0; node->name[i] != 0; i++ )
+    uxml_putchar( p, node->name[i] );
 
-  for( n = node->child; n != 0; n = p->node[ n ].next )
+  for( n = node->child; n != NULL; n = n->next )
   {
-    switch( p->node[n].type )
+    switch( n->type )
     {
     case XML_ATTR:
       uxml_putchar( p, ' ' );
-      for( i = 0; p->text[ p->node[n].name + i ] != 0; i++ )
-        uxml_putchar( p, p->text[ p->node[n].name + i ] );
+      for( i = 0; n->name[i] != 0; i++ )
+        uxml_putchar( p, n->name[i] );
       uxml_putchar( p, '=' );
       uxml_putchar( p, '\"' );
-      for( i = 0; i < p->node[n].size; i++ )
-        uxml_put_escape( p, p->text[ p->node[n].content + i ] );
+      for( i = 0; i < n->size; i++ )
+        uxml_put_escape( p, n->content[i] );
       uxml_putchar( p, '\"' );
       break;
     case XML_NODE: in++; break;
@@ -1576,13 +1498,13 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
     for( i = 0; i < offset + 2; i++ ) 
       uxml_putchar( p, ' ' );
     for( i = 0; i < node->size; i++ ) 
-      uxml_put_escape( p, p->text[ node->content + i ] );
+      uxml_put_escape( p, node->content[i] );
     uxml_putchar( p, '\n' );
-    for( n = node->child; n != 0; n = p->node[ n ].next )
+    for( n = node->child; n != 0; n = n->next )
     {
-      if( p->node[n].type == XML_NODE )
+      if( n->type == XML_NODE )
       {
-        uxml_dump_internal( p, offset + 2, p->node + n );
+        uxml_dump_internal( p, offset + 2, n );
       }
     }
     for( i = 0; i < offset; i++ ) 
@@ -1591,8 +1513,8 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
     uxml_putchar( p, '<' );
     uxml_putchar( p, '/' );
 
-    for( i = 0; p->text[ node->name + i ] != 0; i++ )
-      uxml_putchar( p, p->text[ node->name + i ] );
+    for( i = 0; node->name[i] != 0; i++ )
+      uxml_putchar( p, node->name[i] );
 
     uxml_putchar( p, '>' );
     uxml_putchar( p, '\n' );
@@ -1614,14 +1536,14 @@ unsigned char *uxml_dump( uxml_node_t *node )
   t = p->dump;
   p->dump = NULL;
   p->dump_index = 0;
-  for( i = 1; i < p->node[0].next; i++ )
+  for( i = 1; i < (p->node[0].next - p->node); i++ )
   {
     if( p->node[ i ].type == XML_INST )
     {
       uxml_dump_internal( p, 0, p->node + i );
     }
   }
-  uxml_dump_internal( p, 0, p->node + (p->node[0].next) );
+  uxml_dump_internal( p, 0, p->node[0].next );
   uxml_putchar( p, 0 );
 
   p->dump = t;
@@ -1641,14 +1563,14 @@ unsigned char *uxml_dump( uxml_node_t *node )
     p->dump_size = p->dump_index;
   }
   p->dump_index = 0;
-  for( i = 1; i < p->node[0].next; i++ )
+  for( i = 1; i < (p->node[0].next - p->node); i++ )
   {
     if( p->node[ i ].type == XML_INST )
     {
       uxml_dump_internal( p, 0, p->node + i );
     }
   }
-  uxml_dump_internal( p, 0, p->node + (p->node[0].next) );
+  uxml_dump_internal( p, 0, p->node[0].next );
   uxml_putchar( p, 0 );
   if( p->dump_index > p->dump_size )
     return NULL;
@@ -1700,20 +1622,22 @@ void uxml_dump_list( uxml_node_t *root )
   uxml_t *p = root->instance;
   int i;
 
-  for( i = 0; i < p->nodes_count; i++ )
+  for( i = 0; i < p->nodes_count[0]; i++ )
   {
     printf( "%d: %s name=\"%s\" content=\"%s\" size=%d parent=%d child=%d next=%d",
       i, 
       p->node[i].type == XML_NODE ? "node": (p->node[i].type == XML_ATTR ? "attr": (p->node[i].type == XML_INST ? "inst": (p->node[i].type == XML_NONE ? "none": "????"))),
-      p->text + p->node[i].name,
-      p->text + p->node[i].content,
+      p->node[i].name,
+      p->node[i].content,
       p->node[i].size,
-      p->node[i].parent, p->node[i].child, p->node[i].next );
+      p->node[i].parent == NULL ? 0: p->node[i].parent - p->node,
+      p->node[i].child  == NULL ? 0: p->node[i].child - p->node, 
+      p->node[i].next == NULL ? 0: p->node[i].next - p->node );
     if( p->node[i].modcount != 0 )
       printf( " modcount=%d", p->node[i].modcount );
     printf( "\n" );
   }
-  printf( "Total nodes: %d, text size/allocated: %d/%d\n", p->nodes_count, p->text_size, p->text_allocated );
+  printf( "Total nodes: %d, text size/allocated: %d/%d\n", p->nodes_count[0], p->text_size[0], p->text_allocated[0] );
 }
 
 int uxml_get_initial_allocated( uxml_node_t *root )

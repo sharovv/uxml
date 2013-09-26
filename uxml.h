@@ -81,9 +81,7 @@ uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error );
 \endverbatim
  * will result to "content1 content2 content3".
  * This content are consider as constant, and valid until
- * one of this calls has occured: \c uxml_free, \c uxml_add_child and \c uxml_set (!).
- * Therefore, the call \c uxml_get can be used only to read XML data, not to write,
- * such of initial configuration. Instead of them, call the \c uxml_copy.
+ * \c uxml_free call has been occured.
  * \param node - node's pointer;
  * \param path - node's path. 
  * \return pointer to node's content.
@@ -108,7 +106,7 @@ int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buff
  * This modification count (or "modcount") can be used to check
  * whatever the content was changed.
  */
-void uxml_set( uxml_node_t *node, const char *path, const char *value, const int size );
+int uxml_set( uxml_node_t *node, const char *path, const char *value, const int size );
 
 /*! Get modification count
  */
