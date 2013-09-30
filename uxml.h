@@ -84,7 +84,7 @@ uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error );
  * \c uxml_free call has been occured.
  * \param node - node's pointer;
  * \param path - node's path. 
- * \return pointer to node's content.
+ * \return pointer to node's content, or NULL, if specified node doesn't exists.
  */
 const char *uxml_get( uxml_node_t *node, const char *path );
 

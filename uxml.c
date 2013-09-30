@@ -1194,7 +1194,7 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
 const char *uxml_get( uxml_node_t *node, const char *path )
 {
   uxml_node_t *n = uxml_node( node, path );
-  return n == NULL ? node->instance->text: n->content;
+  return n == NULL ? NULL: n->content;
 }
 
 int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buffer_size )
