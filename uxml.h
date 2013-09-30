@@ -87,6 +87,7 @@ uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error );
  * \return pointer to node's content, or NULL, if specified node doesn't exists.
  */
 const char *uxml_get( uxml_node_t *node, const char *path );
+int uxml_int( uxml_node_t *node, const char *path );
 
 /*! Copy node's content
  *

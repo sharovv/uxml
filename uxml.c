@@ -1102,6 +1102,11 @@ uxml_node_t *uxml_next( uxml_node_t *node )
   return node->next;
 }
 
+const char *uxml_name( uxml_node_t *node )
+{
+  return node->name;
+}
+
 uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
 {
   uxml_t *p = node->instance;
@@ -1195,6 +1200,12 @@ const char *uxml_get( uxml_node_t *node, const char *path )
 {
   uxml_node_t *n = uxml_node( node, path );
   return n == NULL ? NULL: n->content;
+}
+
+int uxml_int( uxml_node_t *node, const char *path )
+{
+  const char *s = uxml_get( node, path );
+  return s == NULL ? 0: (int)strtol( s, NULL, 0 );
 }
 
 int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buffer_size )
