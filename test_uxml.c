@@ -98,6 +98,38 @@ int test_add()
   return 1;
 }
 
+int test_base64()
+{
+  unsigned char b[64], d[64];
+  static const unsigned char c[] = "9876543210", f[] = "OTg3 Nj U0Mz IxMA==";
+  int i, k;
+
+  if( (i = uxml_encode64( b, sizeof( b ), c, strlen( c ) )) == 0 )
+  {
+    printf( "uxml_encode64 failed\n" );
+    return 0;
+  }
+  if( strcmp( b, "OTg3NjU0MzIxMA==" ) != 0 )
+  {
+    printf( "uxml_encode64 failed\n" );
+    return 0;
+  }
+  printf( "encode64 \"%s\" -> \"%s\"\n", c, b );
+  if( (k = uxml_decode64( d, sizeof( d ), f, strlen( f ) )) == 0 )
+  {
+    printf( "uxml_decode64 failed\n" );
+    return 0;
+  }
+  d[k] = 0;
+  if( strcmp( d, c ) != 0 )
+  {
+    printf( "uxml_decode64 failed\n" );
+    return 0;
+  }
+  printf( "decode64 \"%s\" -> \"%s\"\n", f, d );
+  return 1;
+}
+
 int test_set()
 {
   uxml_node_t *a;
@@ -193,5 +225,6 @@ main()
   if( !test_navigate() ) return 1;
   if( !test_add() ) return 1;
   if( !test_set() ) return 1;
+  if( !test_base64() ) return 1;
   return 0;
 }

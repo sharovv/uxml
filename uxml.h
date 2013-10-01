@@ -180,6 +180,31 @@ void uxml_free( uxml_node_t *root );
  */
 unsigned char *uxml_dump( uxml_node_t *root );
 
+/*! Encode to base64 sequence
+ *
+ * Encode binary data into the Base64 text data.
+ * Because the every four encoded characters is derived from three
+ * origin bytes, the destination buffer must be as 4/3 times more size
+ * than original, plus 4 padding characters and 1 zero byte.
+ * \param dst - pointer to destination buffer with size = (n_src * 4 / 3) + 4 + 1 at least;
+ * \param n_dst - maximum possible size of destination buffer;
+ * \param src - pointer to original binary data;
+ * \param n_src - size of original binary data in bytes.
+ * \return size of encoded sequence in bytes, stored in \c dst buffer;
+ */
+int uxml_encode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src );
+
+/*! Decode from base64 sequence
+ *
+ * Decode base64 sequence into binary data.
+ * \param dst - pointer to destination binary data buffer;
+ * \param n_dst - maximum possible size of destination buffer;
+ * \param src - pointer to original base64 character sequence;
+ * \param n_src - size of original base64 character sequence.
+ * \return size of decoded binary data in bytes, stored in \c dst buffer;
+ */
+int uxml_decode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src );
+
 void uxml_dump_list( uxml_node_t *root );
 int uxml_get_initial_allocated( uxml_node_t *root );
 

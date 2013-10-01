@@ -1656,3 +1656,83 @@ int uxml_get_initial_allocated( uxml_node_t *root )
   uxml_t *p = root->instance;
   return p->initial_allocated;
 }
+
+int uxml_encode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src )
+{
+  static const unsigned char cb64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  unsigned char *d;
+  const unsigned char *s;
+  int n, k;
+
+  for( n = n_src, s = src, d = dst, k = n_dst; k > 4 && n > 3; n -= 3, d += 4, s += 3, k -= 4 )
+  {
+    d[0] = cb64[ s[0] >> 2 ];
+    d[1] = cb64[ (((s[0] & 0x03) << 4) | ((s[1] & 0xf0) >> 4)) ];
+    d[2] = cb64[ (((s[1] & 0x0f) << 2) | ((s[2] & 0xc0) >> 6)) ];
+    d[3] = cb64[ s[2] & 0x3f ];
+  }
+  if( k < 4 )
+    return 0;
+  d[0] = cb64[ s[0] >> 2 ];
+  d[1] = cb64[ (((s[0] & 0x03) << 4) | (((n > 0 ? s[1]: 0) & 0xf0) >> 4)) ];
+  d[2] = (n > 1 ? cb64[ (((s[1] & 0x0f) << 2) | (((n > 2 ? s[2]: 0) & 0xc0) >> 6)) ] : '=');
+  d[3] = (n > 2 ? cb64[ s[2] & 0x3f ] : '=');
+  d[4] = 0;
+  return (d + 5 - dst);
+}
+
+int uxml_decode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src )
+{
+  static const char cd64[]="|$$$}rstuvwxyz{$$$$$$$>?@ABCDEFGHIJKLMNOPQRSTUVW$$$$$$XYZ[\\]^_`abcdefghijklmnopq";
+  int in[4], out[3];
+  unsigned char *d;
+  const unsigned char *s;
+  int i, len, n, k, v;
+
+  for( n = n_src, s = src, d = dst, k = n_dst; n != 0;  )
+  {
+    for( len = 0, i = 0; i < 4 && n != 0; i++ )
+    {
+      v = 0;
+      while( n != 0 && v == 0 )
+      {
+        v = *(s++);
+        n--;
+        if( n != 0 )
+        {
+          v = ((v < 43 || v > 122) ? 0: cd64[ v - 43 ]);
+          if( v != 0 )
+          {
+            v = ((v == '$') ? 0: (v - 61));
+          }
+        }
+      }
+      if( n != 0 )
+      {
+        len++;
+        if( v != 0 )
+        {
+          in[i] = v - 1;
+        }
+      }
+      else
+      {
+        in[i] = 0;
+      }
+    }
+    if( len > 0 )
+    {
+      out[ 0 ] = (in[0] << 2 | in[1] >> 4);
+      out[ 1 ] = (in[1] << 4 | in[2] >> 2);
+      out[ 2 ] = (((in[2] << 6) & 0xc0) | in[3]);
+      for( i = 0; i < (len - 1) && k != 0; i++ )
+      {
+        *(d++) = out[i];
+        k--;
+      }
+    }
+  }
+  if( n != 0 )
+    return 0;
+  return (d - dst);
+}
