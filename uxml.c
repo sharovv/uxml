@@ -1205,7 +1205,7 @@ const char *uxml_get( uxml_node_t *node, const char *path )
 int uxml_int( uxml_node_t *node, const char *path )
 {
   const char *s = uxml_get( node, path );
-  return s == NULL ? 0: (int)strtol( s, NULL, 0 );
+  return (s != NULL) ? (int)strtol( s, NULL, 0 ): 0;
 }
 
 int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buffer_size )
