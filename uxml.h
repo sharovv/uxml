@@ -87,7 +87,26 @@ uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error );
  * \return pointer to node's content, or NULL, if specified node doesn't exists.
  */
 const char *uxml_get( uxml_node_t *node, const char *path );
+
+/*! Get integer value
+ *
+ * Like a \c uxml_get, but convert node's content to integer type.
+ * \param node - node's pointer;
+ * \param path - node's path.
+ * \return node's content converted to the integer type.
+ */
 int uxml_int( uxml_node_t *node, const char *path );
+
+#if !defined( UXML_DISABLE_DOUBLE )
+/*! Get real type value
+ *
+ * Like a \c uxml_get, but convert node's content to double precision type.
+ * \param node - node's pointer;
+ * \param path - node's path.
+ * \return Node's content converted to the real double-precision type.
+ */
+double uxml_double( uxml_node_t *node, const char *path );
+#endif
 
 /*! Copy node's content
  *
@@ -164,6 +183,26 @@ uxml_node_t *uxml_child( uxml_node_t *node );
  * \return Next node, or NULL if this is last child of parent node.
  */
 uxml_node_t *uxml_next( uxml_node_t *node );
+
+/*! Create new node
+ *
+ * Creates a new node and add it to the specified \n node.
+ * \param node - pointer of parent node;
+ * \param name - name of new node;
+ * \param content - content of new node, or NULL if no content should be added;
+ * \return Pointer to newly created node, or NULL in case of error.
+ */
+uxml_node_t *uxml_new_node( uxml_node_t *node, const char *name, const char *content );
+
+/*! Create new attribute
+ *
+ * Creates a new attribute for the specified \n node.
+ * \param node - pointer of desired node;
+ * \param name - name of new attribute;
+ * \param content - content of new attribute, or NULL in case of emtpy attribute;
+ * \return Pointer to newly created attribute, or NULL in case of error.
+ */
+uxml_node_t *uxml_new_attr( uxml_node_t *node, const char *name, const char *content );
 
 /*! Add child node
  */

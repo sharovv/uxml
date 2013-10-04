@@ -1208,6 +1208,14 @@ int uxml_int( uxml_node_t *node, const char *path )
   return (s != NULL) ? (int)strtol( s, NULL, 0 ): 0;
 }
 
+#if !defined( UXML_DISABLE_DOUBLE )
+double uxml_double( uxml_node_t *node, const char *path )
+{
+  const char *s = uxml_get( node, path );
+  return (s != NULL) ? strtod( s, NULL ): 0.0;
+}
+#endif
+
 int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buffer_size )
 {
   uxml_node_t *n = uxml_node( node, path );
@@ -1586,6 +1594,97 @@ unsigned char *uxml_dump( uxml_node_t *node )
   if( p->dump_index > p->dump_size )
     return NULL;
   return p->dump;
+}
+
+static uxml_node_t *uxml_new( uxml_node_t *node, const int node_type, const char *name, const char *content )
+{
+  uxml_t *p = node->instance;
+  uxml_node_t *last_child = NULL, *k;
+  int i, j, name_size, content_size;
+  unsigned char *t = NULL;
+  uxml_node_t *n = NULL;
+
+  name_size = strlen( name ) + 1;
+  content_size = (content != NULL) ? (strlen( content ) + 1): 0;
+  j = name_size + content_size;
+
+  if( j > (p->text_allocated[ p->text_frag ] - p->text_size[ p->text_frag ]) )
+  {
+    for( i = (p->text_allocated[ p->text_frag ] << 1); i < j; i <<= 1 );
+    if( (t = malloc( i )) == NULL )
+    {
+      p->error = "malloc failed";
+      return 0;
+    }
+    memset( t, 0, i );
+    p->text_frag++;
+    p->atext[ p->text_frag ] = t;
+    p->text_allocated[ p->text_frag ] = i;
+    p->text_size[ p->text_frag ] = 0;
+  }
+  if( p->nodes_allocated[ p->node_frag ] <= p->nodes_count[ p->node_frag ] )
+  {
+    i = (p->nodes_allocated[ p->node_frag ] << 1);
+    if( (n = malloc( sizeof( uxml_node_t ) * i )) == NULL )
+    {
+      p->error = "malloc failed";
+      return 0;
+    }
+    memset( n, 0, sizeof( uxml_node_t ) * i );
+    p->node_frag++;
+    p->anode[ p->node_frag ] = n;
+    p->nodes_allocated[ p->node_frag ] = i;
+    p->nodes_count[ p->node_frag ] = 0;
+  }
+  n = p->anode[ p->node_frag ] + p->nodes_count[ p->node_frag ];
+  p->nodes_count[ p->node_frag ]++;
+
+  n->type = node_type;
+  
+  n->name = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
+  memcpy( n->name, name, name_size );
+  p->text_size[ p->text_frag ] += name_size;
+
+  if( content_size != 0 )
+  {
+    n->content = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
+    memcpy( n->content, content, content_size );
+    p->text_size[ p->text_frag ] += content_size;
+    n->size = content_size - 1;
+    n->fullsize = content_size;
+  }
+  else
+  {
+    n->content = p->text;
+    n->size = 0;
+    n->fullsize = 0;
+  }
+  n->instance = p;
+  n->parent = node;
+  n->next = NULL;
+  n->child = NULL;
+  
+  if( node->child == NULL )
+  {
+    node->child = n;
+  }
+  else
+  {
+    for( k = node->child; k->next != NULL; k = k->next );
+    k->next = n;
+  }
+  n->modcount = 0;
+  return n;
+}
+
+uxml_node_t *uxml_new_node( uxml_node_t *node, const char *name, const char *content )
+{
+  return uxml_new( node, XML_NODE, name, content );
+}
+
+uxml_node_t *uxml_new_attr( uxml_node_t *node, const char *name, const char *content )
+{
+  return uxml_new( node, XML_ATTR, name, content );
 }
 
 #include <stdio.h>

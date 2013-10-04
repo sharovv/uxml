@@ -169,6 +169,28 @@ int test_set()
   return 1;
 }
 
+int test_new()
+{
+  uxml_node_t *x, *b;
+  static const char xml[] = 
+    "<?xml version='1.0' encoding='UTF-8'?>\n"
+    "<nodeR attrR1='valueR1'>\n"
+    "contentR\n"
+    "<nodeA attrA1='valueA1'/>\n"
+    "</nodeR>";
+
+  if( (x = uxml_parse( xml, sizeof( xml ), &e )) == NULL ) 
+    return print_error( &e );
+
+  b = uxml_new_node( x, "nodeB", "contentB" );
+  uxml_new_attr( x, "attrR2", "valueR2" );
+  uxml_new_attr( uxml_node( x, "nodeA" ), "attrA2", "valueA2" );
+  uxml_new_attr( b, "attrB1", "valueB1" );
+  printf( "\n=======\n%s=======\n", uxml_dump( x ) );
+  uxml_free( x );
+  return 1;
+}
+
 main()
 {
   const char test_header_and_empty_root[] = 
@@ -225,6 +247,7 @@ main()
   if( !test_navigate() ) return 1;
   if( !test_add() ) return 1;
   if( !test_set() ) return 1;
+  if( !test_new() ) return 1;
   if( !test_base64() ) return 1;
   return 0;
 }
