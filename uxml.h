@@ -244,7 +244,4 @@ int uxml_encode64( unsigned char *dst, const int n_dst, const unsigned char *src
  */
 int uxml_decode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src );
 
-void uxml_dump_list( uxml_node_t *root );
-int uxml_get_initial_allocated( uxml_node_t *root );
-
 #endif

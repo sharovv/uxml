@@ -907,7 +907,6 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
 static int uxml_parse_doc( uxml_t *p )
 {
   int *c = p->c + 3;
-  int *escape = p->escape + 3;
   int root = 0;
 
   while( uxml_getc( p ) )
@@ -973,7 +972,7 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
   char *c;
   int i;
 
-  p->xml = xml_data;
+  p->xml = (const unsigned char *)xml_data;
   p->xml_index = 0;
   p->xml_size = xml_length;
   p->text = NULL;
@@ -1038,9 +1037,9 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
   c += sizeof( uxml_t );
   p->node = (uxml_node_t *)c;
   c += (sizeof( uxml_node_t ) * p->node_index);
-  p->text = c;
+  p->text = (unsigned char *)c;
 
-  p->xml = xml_data;
+  p->xml = (const unsigned char *)xml_data;
   p->xml_index = 0;
   p->xml_size = xml_length;
   p->atext[0] = p->text;
@@ -1104,7 +1103,7 @@ uxml_node_t *uxml_next( uxml_node_t *node )
 
 const char *uxml_name( uxml_node_t *node )
 {
-  return node->name;
+  return (const char *)node->name;
 }
 
 uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
@@ -1199,7 +1198,7 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
 const char *uxml_get( uxml_node_t *node, const char *path )
 {
   uxml_node_t *n = uxml_node( node, path );
-  return n == NULL ? NULL: n->content;
+  return n == NULL ? NULL: (const char *)n->content;
 }
 
 int uxml_int( uxml_node_t *node, const char *path )
@@ -1301,7 +1300,7 @@ int uxml_size( uxml_node_t *node, const char *path )
 static void uxml_add_child_count( uxml_node_t *node, int *ct, int *cn )
 {
   uxml_node_t *n;
-  (*ct) += (strlen( node->name ) + 1);
+  (*ct) += (strlen( (char *)node->name ) + 1);
   (*ct) += (node->fullsize + 1);
   (*cn) += 1;
 
@@ -1321,8 +1320,8 @@ static uxml_node_t *uxml_add_child_fill( uxml_t *p, uxml_node_t *s, uxml_node_t 
   n->type = s->type;
   
   n->name = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
-  memcpy( n->name, s->name, strlen( s->name ) + 1 );
-  p->text_size[ p->text_frag ] += (strlen( s->name ) + 1);
+  memcpy( n->name, s->name, strlen( (char *)s->name ) + 1 );
+  p->text_size[ p->text_frag ] += (strlen( (char *)s->name ) + 1);
   
   n->content = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
   memcpy( n->content, s->content, s->fullsize + 1 );
@@ -1361,7 +1360,6 @@ static uxml_node_t *uxml_add_child_fill( uxml_t *p, uxml_node_t *s, uxml_node_t 
 int uxml_add_child( uxml_node_t *node, uxml_node_t *child )
 {
   uxml_t *p = node->instance;
-  uxml_t *c = child->instance;
   int i, j = 0, k = 0;
   unsigned char *t = NULL;
   uxml_node_t *n = NULL;
@@ -1599,7 +1597,7 @@ unsigned char *uxml_dump( uxml_node_t *node )
 static uxml_node_t *uxml_new( uxml_node_t *node, const int node_type, const char *name, const char *content )
 {
   uxml_t *p = node->instance;
-  uxml_node_t *last_child = NULL, *k;
+  uxml_node_t *k;
   int i, j, name_size, content_size;
   unsigned char *t = NULL;
   uxml_node_t *n = NULL;
@@ -1756,82 +1754,91 @@ int uxml_get_initial_allocated( uxml_node_t *root )
   return p->initial_allocated;
 }
 
+/*       7   6   5   4   3   2   1   0
+ *      -------------------------------
+ * D0 = XXX XXX S07 S06 S05 S04 S03 S02
+ * D1 = XXX XXX S01 S00 S17 S16 S15 S14
+ * D2 = XXX XXX S13 S12 S11 S10 S27 S26
+ * D3 = XXX XXX S25 S24 S23 S22 S21 S20
+ */
+static const unsigned char base64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
 int uxml_encode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src )
 {
-  static const unsigned char cb64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
   unsigned char *d;
   const unsigned char *s;
   int n, k;
 
-  for( n = n_src, s = src, d = dst, k = n_dst; k > 4 && n > 3; n -= 3, d += 4, s += 3, k -= 4 )
+  for( n = n_src, s = src, k = n_dst, d = dst; n >= 3 && k >= 4; n -= 3, s += 3, k -= 4, d += 4 )
   {
-    d[0] = cb64[ s[0] >> 2 ];
-    d[1] = cb64[ (((s[0] & 0x03) << 4) | ((s[1] & 0xf0) >> 4)) ];
-    d[2] = cb64[ (((s[1] & 0x0f) << 2) | ((s[2] & 0xc0) >> 6)) ];
-    d[3] = cb64[ s[2] & 0x3f ];
+    d[0] = base64[ s[0] >> 2 ];
+    d[1] = base64[ (((s[0] & 0x03) << 4) | ((s[1] & 0xf0) >> 4)) ];
+    d[2] = base64[ (((s[1] & 0x0f) << 2) | ((s[2] & 0xc0) >> 6)) ];
+    d[3] = base64[ s[2] & 0x3f ];
   }
-  if( k < 4 )
+  if( n == 0 )
+  {
+    if( k == 0 )
+      return 0;
+    d[0] = 0;
+    return (d + 1 - dst);
+  }
+  if( k < 5 )
     return 0;
-  d[0] = cb64[ s[0] >> 2 ];
-  d[1] = cb64[ (((s[0] & 0x03) << 4) | (((n > 0 ? s[1]: 0) & 0xf0) >> 4)) ];
-  d[2] = (n > 1 ? cb64[ (((s[1] & 0x0f) << 2) | (((n > 2 ? s[2]: 0) & 0xc0) >> 6)) ] : '=');
-  d[3] = (n > 2 ? cb64[ s[2] & 0x3f ] : '=');
+  d[0] = base64[ s[0] >> 2 ];
+  d[1] = base64[ (((s[0] & 0x03) << 4) | (((n > 1 ? s[1]: 0) & 0xf0) >> 4)) ];
+  d[2] = (n > 1 ? base64[ (((s[1] & 0x0f) << 2) | (((n > 2 ? s[2]: 0) & 0xc0) >> 6)) ] : '=');
+  d[3] = (n > 2 ? base64[ s[2] & 0x3f ] : '=');
   d[4] = 0;
   return (d + 5 - dst);
 }
 
 int uxml_decode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src )
 {
-  static const char cd64[]="|$$$}rstuvwxyz{$$$$$$$>?@ABCDEFGHIJKLMNOPQRSTUVW$$$$$$XYZ[\\]^_`abcdefghijklmnopq";
-  int in[4], out[3];
+  static char decode_tab[128];
+  static int decode_tab_initialized = 0;
   unsigned char *d;
   const unsigned char *s;
-  int i, len, n, k, v;
+  int i, n, k, v[4];
 
-  for( n = n_src, s = src, d = dst, k = n_dst; n != 0;  )
+  if( !decode_tab_initialized )
   {
-    for( len = 0, i = 0; i < 4 && n != 0; i++ )
+    for( i = 0; i < sizeof( decode_tab ); i++ ) decode_tab[i] = -1;
+    for( i = 0; i < 64; i++ )
     {
-      v = 0;
-      while( n != 0 && v == 0 )
-      {
-        v = *(s++);
-        n--;
-        if( n != 0 )
-        {
-          v = ((v < 43 || v > 122) ? 0: cd64[ v - 43 ]);
-          if( v != 0 )
-          {
-            v = ((v == '$') ? 0: (v - 61));
-          }
-        }
-      }
-      if( n != 0 )
-      {
-        len++;
-        if( v != 0 )
-        {
-          in[i] = v - 1;
-        }
-      }
-      else
-      {
-        in[i] = 0;
-      }
+      decode_tab[ base64[i] ] = i;
     }
-    if( len > 0 )
+    decode_tab_initialized = 1;
+  }
+  for( i = 0, n = n_src, s = src, k = n_dst, d = dst; n != 0; s++, n-- )
+  {
+    if( decode_tab[ s[0] ] < 0 )
+      continue;
+    v[ i ] = decode_tab[ s[0] ];
+    i++;
+    if( i >= 4 )
     {
-      out[ 0 ] = (in[0] << 2 | in[1] >> 4);
-      out[ 1 ] = (in[1] << 4 | in[2] >> 2);
-      out[ 2 ] = (((in[2] << 6) & 0xc0) | in[3]);
-      for( i = 0; i < (len - 1) && k != 0; i++ )
+      if( k < 3 )
+        break;
+      d[0] = ((v[0] << 2) | (v[1] >> 4));
+      d[1] = ((v[1] << 4) | (v[2] >> 2));
+      d[2] = (((v[2] << 6) & 0xC0) | v[3]);
+      d += 3;
+      k -= 3;
+      i = 0;
+    }
+  }
+  if( i >= 2 && k >= 1 )
+  {
+    *(d++) = ((v[0] << 2) | (v[1] >> 4));
+    if( i >= 3 && k >= 2 )
+    {
+      *(d++) = ((v[1] << 4) | (v[2] >> 2));
+      if( i >= 4 && k >= 3 )
       {
-        *(d++) = out[i];
-        k--;
+        *(d++) = (((v[2] << 6) & 0xC0) | v[3]);
       }
     }
   }
-  if( n != 0 )
-    return 0;
   return (d - dst);
 }

@@ -29,6 +29,7 @@ ticks_t ticks()
 }
 #endif
 
+int uxml_get_initial_allocated( uxml_node_t *root );
 
 int main( int argc, char *argv[] )
 {

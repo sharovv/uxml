@@ -2,6 +2,8 @@
 #include <time.h>
 #include <stdio.h>
 
+void uxml_dump_list( uxml_node_t *root );
+
 int main( int argc, char *argv[] )
 {
   int i;

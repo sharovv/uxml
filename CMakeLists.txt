@@ -2,11 +2,6 @@ cmake_minimum_required( VERSION 2.6 )
 project( uxml )
 include_directories( ${CMAKE_SOURCE_DIR} )
 
-if( MSVC )
-  set( CMAKE_C_FLAGS_RELEASE "/nologo" )
-  set( CMAKE_C_FLAGS_DEBUG "/MTd" )
-endif()
-
 add_library( uxml uxml.c )
 
 add_executable( test_uxml test_uxml.c )
