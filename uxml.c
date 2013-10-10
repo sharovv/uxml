@@ -118,7 +118,8 @@ struct _uxml_node_t
   uxml_node_t *parent;    /* index of parent element */
   uxml_node_t *child;     /* index of first child element (for XML_NODE only), 0 means no child */
   uxml_node_t *next;      /* index of next element (not for XML_INST), 0 means last element */
-  int modcount;
+  int modcount;           /* modification count */
+  void *user;             /* user pointer */
 };
 
 #define isdigit( c ) (c>='0'&&c<='9')
@@ -1214,6 +1215,19 @@ double uxml_double( uxml_node_t *node, const char *path )
   return (s != NULL) ? strtod( s, NULL ): 0.0;
 }
 #endif
+
+void *uxml_user( uxml_node_t *node, const char *path )
+{
+  uxml_node_t *n = uxml_node( node, path );
+  return (n != NULL) ? n->user: NULL;
+}
+
+void uxml_set_user( uxml_node_t *node, const char *path, void *user )
+{
+  uxml_node_t *n = uxml_node( node, path );
+  if( n != NULL )
+    n->user = user;
+}
 
 int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buffer_size )
 {

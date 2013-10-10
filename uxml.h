@@ -134,12 +134,12 @@ int uxml_modcount( uxml_node_t *node, const char *path );
 
 /*! Return user's pointer
  */
-void uxml_user( uxml_node_t *node, const char *path );
+void *uxml_user( uxml_node_t *node, const char *path );
 
 /*! Set the user's pointer
  *
  */
-void uxml_set_user( uxml_node_t *node, const char *path );
+void uxml_set_user( uxml_node_t *node, const char *path, void *user );
 
 /*! Get the size of node's content
  *
