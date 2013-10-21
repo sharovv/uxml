@@ -377,7 +377,7 @@ static int uxml_parse_inst( uxml_t *p )
       {
         if( !isspace( c[0] ) )
         {
-          p->error = "Ivalid character";
+          p->error = "Invalid character";
           return 0;
         }
       }
