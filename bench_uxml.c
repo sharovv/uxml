@@ -54,7 +54,7 @@ int main( int argc, char *argv[] )
   {
     return fprintf( stderr, "No file specified\n" );
   }
-  
+
   if( (fp = fopen( argv[i], "rb" )) == NULL )
   {
     return fprintf( stderr, "fopen(%s) failed\n", argv[i] );
@@ -75,7 +75,7 @@ int main( int argc, char *argv[] )
     return fprintf( stderr, "fread failed\n" );
   }
 
-  t0 = time( &t0 );  
+  t0 = time( &t0 );
   tck = ticks();
 
   do
@@ -93,6 +93,7 @@ int main( int argc, char *argv[] )
   tck = ticks() - tck;
 
   printf( "%d ticks/character, %d bytes allocated (%d%% overhead)\n", (int)(tck / (n * k)), j, (j - n) * 100 / n );
-  
+
+  free( b );
   return 0;
 }

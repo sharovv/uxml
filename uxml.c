@@ -1089,6 +1089,8 @@ void uxml_free( uxml_node_t *node )
     if( p->atext[i] != NULL ) free( p->atext[i] );
     if( p->anode[i] != NULL ) free( p->anode[i] );
   }
+  if( p->dump != NULL )
+    free( p->dump );
   free( p );
 }
 

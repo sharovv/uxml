@@ -97,6 +97,8 @@ int test_add()
   if( (s = uxml_dump( ra )) != NULL )
     printf( "%s", s ); 
 
+  uxml_free( ra );
+  uxml_free( rb );
   return 1;
 }
 
@@ -168,6 +170,7 @@ int test_set()
   uxml_copy( a, "/nodeA", t, sizeof( t ) );
   printf( "copy(/nodeA)=\"%s\"\n", t );
 
+  uxml_free( a );
   return 1;
 }
 
