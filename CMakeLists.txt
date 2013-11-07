@@ -12,3 +12,6 @@ target_link_libraries( dump_xml uxml )
 
 add_executable( bench_uxml bench_uxml.c )
 target_link_libraries( bench_uxml uxml )
+
+add_executable( test_plusplus test_plusplus.cpp )
+target_link_libraries( test_plusplus uxml )

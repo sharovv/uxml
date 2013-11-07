@@ -1,6 +1,10 @@
 #ifndef _uxml_h
 #define _uxml_h
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*! XML node structure
  *
  * Pointer to this structure is used 
@@ -243,5 +247,9 @@ int uxml_encode64( unsigned char *dst, const int n_dst, const unsigned char *src
  * \return size of decoded binary data in bytes, stored in \c dst buffer;
  */
 int uxml_decode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src );
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

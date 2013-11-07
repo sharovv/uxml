@@ -10,6 +10,8 @@ int print_error( uxml_error_t *e )
   return 0;
 }
 
+void uxml_dump_list( uxml_node_t *root );
+
 int test( const char *x )
 {
   uxml_node_t *root;
