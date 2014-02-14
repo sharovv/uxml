@@ -1528,11 +1528,14 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
   {
     uxml_putchar( p, '>' );
     uxml_putchar( p, '\n' );
-    for( i = 0; i < offset + 2; i++ ) 
-      uxml_putchar( p, ' ' );
-    for( i = 0; i < node->size; i++ ) 
-      uxml_put_escape( p, node->content[i] );
-    uxml_putchar( p, '\n' );
+    if( node->size != 0 )
+    {
+      for( i = 0; i < offset + 2; i++ ) 
+        uxml_putchar( p, ' ' );
+      for( i = 0; i < node->size; i++ ) 
+        uxml_put_escape( p, node->content[i] );
+      uxml_putchar( p, '\n' );
+    }
     for( n = node->child; n != 0; n = n->next )
     {
       if( n->type == XML_NODE )
