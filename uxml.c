@@ -1560,9 +1560,9 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
   }
 }
 
-unsigned char *uxml_dump( uxml_node_t *node )
+unsigned char *uxml_dump( uxml_node_t *root, unsigned char *dump, const int max_dump, int *dump_size )
 {
-  uxml_t *p = node->instance;
+  uxml_t *p = root->instance;
   int i = 0;
   unsigned char *t;
 
@@ -1607,7 +1607,27 @@ unsigned char *uxml_dump( uxml_node_t *node )
   uxml_putchar( p, 0 );
   if( p->dump_index > p->dump_size )
     return NULL;
-  return p->dump;
+  t = dump;
+  if( t == NULL )
+  {
+    if( (t = malloc( p->dump_size )) == NULL )
+      return NULL;
+  }
+  else
+  {
+    if( p->dump_size > max_dump )
+      return NULL;
+    t = dump;
+  }
+  memcpy( t, p->dump, p->dump_size );
+  if( dump_size != NULL )
+    *dump_size = p->dump_size;
+  return t;
+}
+
+void uxml_dump_free( unsigned char *dump )
+{
+  if( dump != NULL ) free( dump );
 }
 
 static uxml_node_t *uxml_new( uxml_node_t *node, const int node_type, const char *name, const char *content )

@@ -220,8 +220,27 @@ int uxml_add_child( uxml_node_t *node, uxml_node_t *child );
 void uxml_free( uxml_node_t *root );
 
 /*! Get XML dump
+ *
+ * Dump XML data to the text, that can be parsed again.
+ * Special symbols is written as an escapes.
+ * \param dump - pointer to buffer where dump will be stored, 
+ * or NULL in case for allocate a new buffer - 
+ * need to be freed with \c uxml_dump_free call;
+ * \param max_dump - size of buffer in bytes, or 0 if buffer is NULL;
+ * \param dump_size - pointer to an integer, which will be filled with 
+ * number of bytes in dump, including zero byte termination.
+ * \return pointer to specified buffer, or new memory area in the case of an allocation,
+ * or NULL if dump_size exceeds max_dump.
  */
-unsigned char *uxml_dump( uxml_node_t *root );
+unsigned char *uxml_dump( uxml_node_t *root, unsigned char *dump, const int max_dump, int *dump_size );
+
+/*! Free XML dump
+ *
+ * If previous succesfull \c uxml_dump call was made with NULL buffer's pointer, 
+ * there is need to free allocated dump buffer by \c uxml_dump_free.
+ * \param dump - pointer, previously returned by uxml_dump call.
+ */
+void uxml_dump_free( unsigned char *dump );
 
 /*! Encode to base64 sequence
  *

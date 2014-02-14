@@ -78,8 +78,9 @@ int test_add()
   if( (ra = uxml_parse( xml_a, sizeof( xml_a ), &e )) == NULL ) 
     return print_error( &e );
 
-  if( (s = uxml_dump( ra )) != NULL )
-    printf( "%s", s ); 
+  s = uxml_dump( ra, NULL, 0, NULL );
+  printf( "%s", s );
+  uxml_dump_free( s );
 
   if( (rb = uxml_parse( xml_b, sizeof( xml_b ), &e )) == NULL ) 
     return print_error( &e );
@@ -94,8 +95,9 @@ int test_add()
   uxml_add_child( ra, c );
   uxml_dump_list( ra );
 
-  if( (s = uxml_dump( ra )) != NULL )
-    printf( "%s", s ); 
+  s = uxml_dump( ra, NULL, 0, NULL );
+  printf( "%s", s ); 
+  uxml_dump_free( s );
 
   uxml_free( ra );
   uxml_free( rb );
@@ -183,6 +185,7 @@ int test_new()
     "contentR\n"
     "<nodeA attrA1='valueA1'/>\n"
     "</nodeR>";
+  unsigned char *s;
 
   if( (x = uxml_parse( xml, sizeof( xml ), &e )) == NULL ) 
     return print_error( &e );
@@ -191,7 +194,8 @@ int test_new()
   uxml_new_attr( x, "attrR2", "valueR2" );
   uxml_new_attr( uxml_node( x, "nodeA" ), "attrA2", "valueA2" );
   uxml_new_attr( b, "attrB1", "valueB1" );
-  printf( "\n=======\n%s=======\n", uxml_dump( x ) );
+  printf( "\n=======\n%s=======\n", s = uxml_dump( x, NULL, 0, NULL ) );
+  uxml_dump_free( s );
   uxml_free( x );
   return 1;
 }
