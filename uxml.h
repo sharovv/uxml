@@ -172,14 +172,23 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *path );
  */
 const char *uxml_name( uxml_node_t *node );
 
-/*! Get first node's child
+/*! Get first children element or attribute
  *
  * \param node - node's pointer.
- * \return First child of a node (element or attribute),
+ * \return First child of specified node - element or attribute,
  * or NULL if there is no children of this node. 
  * Other children nodes can be obtained by sequence of \c uxml_next calls.
  */
 uxml_node_t *uxml_child( uxml_node_t *node );
+
+/*! Get first node's child node
+ *
+ * \param node - node's pointer.
+ * \return First child of specified node - element only,
+ * or NULL if there is no children of this node. 
+ * Other children nodes can be obtained by sequence of \c uxml_next calls.
+ */
+uxml_node_t *uxml_child_node( uxml_node_t *node );
 
 /*! Get next node
  *

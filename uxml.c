@@ -1099,6 +1099,19 @@ uxml_node_t *uxml_child( uxml_node_t *node )
   return node->child;
 }
 
+uxml_node_t *uxml_child_element( uxml_node_t *node )
+{
+  uxml_node_t *n = node->child;
+
+  while( n != NULL )
+  {
+    if( n->type == XML_NODE )
+      break;
+    n = n->next;
+  }
+  return n;
+}
+
 uxml_node_t *uxml_next( uxml_node_t *node )
 {
   return node->next;
