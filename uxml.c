@@ -1138,8 +1138,8 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
 {
   uxml_t *p = node->instance;
   const char *path = ipath, *s1, *s2;
-  int i, j;
-  uxml_node_t *k, *n = node;
+  int j;
+  uxml_node_t *n = node;
 
   if( path == NULL )
   {
@@ -1159,7 +1159,8 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
         s1 = s2 + 1;
         continue;
       }
-      if( (s2 - s1) == 2 )
+      j = s2 - s1;
+      if( j == 2 )
       {
         if( s1[0] == '.' && s1[1] == '.' )
         {
@@ -1172,24 +1173,18 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
           continue;
         }
       }
-      j = s2 - s1;
-      for( k = n->child; k != NULL; k = k->next )
+      for( n = n->child; n != NULL; n = n->next )
       {
-        if( j != k->name_length )
-          continue;
-        for( i = 0; i != j; i++ )
+        if( j == n->name_length )
         {
-          if( s1[i] != k->name[i] )
+          if( memcmp( s1, n->name, j ) == 0 )
+          {
+            s1 = s2 + 1;
             break;
-        }
-        if( i == j && k->name[i] == 0 )
-        {
-          n = k;
-          s1 = s2 + 1;
-          break;
+          }
         }
       }
-      if( k == 0 )
+      if( n == NULL )
       {
         return NULL;
       }
@@ -1197,30 +1192,23 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
   }
   if( s2 != s1 )
   {
-    if( (s2 - s1) == 2 )
+    j = s2 - s1;
+    if( j == 2 )
     {
       if( s1[0] == '.' && s1[1] == '.' )
       {
         return n->parent;
       }
     }
-    for( k = n->child; k != NULL; k = k->next )
+    for( n = n->child; n != NULL; n = n->next )
     {
-      for( i = 0; i != (s2 - s1); i++ )
+      if( j == n->name_length )
       {
-        if( s1[i] != k->name[i] )
+        if( memcmp( s1, n->name, j ) == 0 )
+        {
           break;
+        }
       }
-      if( i == (s2 - s1) && k->name[i] == 0 )
-      {
-        n = k;
-        s1 = s2 + 1;
-        break;
-      }
-    }
-    if( k == 0 )
-    {
-      return NULL;
     }
   }
   return n;
