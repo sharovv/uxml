@@ -23,13 +23,13 @@ enum { NONE,
 | |    ||    +- ATTR_EQ if( state==ATTR_NAME && c[0]=='=' )
 | |    ||    |
 | |    ||    |+- ATTR_VALUE if( state==ATTR_EQ && c[0]== '\"' )
-| |    ||    ||    
+| |    ||    ||
 | |    ||    ||    +- NODE_TAG if( state==ATTR_VALUE && c[0]=='\"' )
 | |    ||    ||    |
 | |    ||    ||    | +- NODE_CONTENT_TRIM if( state==NODE_TAG && c[0]=='>' )
-| |    ||    ||    | | 
+| |    ||    ||    | |
 | |    ||    ||    | | +- NODE_CONTENT if( state==NODE_CONTENT_TRIM && !isspace( c[0] ) )
-| |    ||    ||    | | | 
+| |    ||    ||    | | |
 | |    ||    ||    | | |            +------ NODE_END if( state==NODE_CONTENT && c[-2]=='<' && c[-1]=='/' )
 | |    ||    ||    | | |            |
 | |    ||    ||    | | |            |    +- NONE|NODE_CONTENT if( state==NODE_END && c[0]=='>' )
@@ -51,7 +51,7 @@ enum { NONE,
   |   ||
   |   ||    +- INST_ATTR_EQ
   |   ||    |
-  |   ||    |+- INST_ATTR_VALUE 
+  |   ||    |+- INST_ATTR_VALUE
   |   ||    ||
   |   ||    ||    +- INST_TAG
   |   ||    ||    |
@@ -64,8 +64,8 @@ enum { NONE,
     +- COMMENT if( (state==NONE||state==NODE_CONTENT||state==NODE_TAG) && c[-3..0]=="<!--" )
 
     |                   +- NONE|NODE_CONTENT|NODE_TAG if( state==COMMENT && c[-2..0]=="-->" )
-    |                   | 
- <!-- comment comment -->                                                 
+    |                   |
+ <!-- comment comment -->
 
 */
 
@@ -100,7 +100,7 @@ typedef struct _uxml_t
   int escape[4];                    /* escape flags for last 4 characters */
   int line;                         /* current line, freeze at error position */
   int column;                       /* current column, freeze at error position */
-  const char *error;                /* error's text */      
+  const char *error;                /* error's text */
   unsigned char *dump;
   int dump_size;
   int dump_index;
@@ -114,6 +114,7 @@ struct _uxml_node_t
   unsigned char *content; /* element's content / attribute value */
   int size;               /* size of element's content */
   int fullsize;           /* full size of element's content */
+  int name_length;        /* length of name */
   uxml_t *instance;       /* UXML instance */
   uxml_node_t *parent;    /* index of parent element */
   uxml_node_t *child;     /* index of first child element (for XML_NODE only), 0 means no child */
@@ -144,12 +145,12 @@ static int uxml_getc( uxml_t *p )
     p->escape[2] = p->escape[3];
     p->escape[3] = 0;
 
-    if( p->xml[ p->xml_index ] == '&' && 
-       (p->state == NODE_CONTENT || 
-        p->state == NODE_CONTENT_TRIM || 
-        p->state == NODE_ATTR_VALUE_DQ || 
+    if( p->xml[ p->xml_index ] == '&' &&
+       (p->state == NODE_CONTENT ||
+        p->state == NODE_CONTENT_TRIM ||
+        p->state == NODE_ATTR_VALUE_DQ ||
         p->state == NODE_ATTR_VALUE_SQ ||
-        p->state == INST_ATTR_VALUE_DQ || 
+        p->state == INST_ATTR_VALUE_DQ ||
         p->state == INST_ATTR_VALUE_SQ) )          /* escape sequences in attribute value or the content */
     {
       p->xml_index++;
@@ -299,30 +300,32 @@ static int uxml_parse_inst( uxml_t *p )
   uxml_node_t *a = NULL;               /* node for attribute reading */
 
   if( p->node != NULL )                /* real parsing? */
-  {                                    
+  {
     n = p->node + p->node_index;       /* use current node */
-                                       
+
     n->type = XML_INST;                /* type of node */
     n->name = p->text + p->text_index; /* name of instruction */
+    n->name_length = 0;
     n->content = p->text;              /* there is no content, tag only */
     n->size = 0;                       /* size of content is 0 */
     n->fullsize = 0;                   /* full size of content is 0 too */
     n->instance = p;                   /* our instance */
     n->parent = NULL;                  /* no parent */
     n->child = NULL;                   /* no child node(s) */
-  }                                    
+  }
   p->node_index++;                     /* next node */
-                                       
+
   p->state = INST_NAME;                /* new state - read instruction name */
   while( uxml_getc( p ) )          /* read new character */
-  {                                    
+  {
     if( p->state == INST_NAME )        /* is name reading ? */
-    {                                  
+    {
       if( !isspace( c[0] ) )           /* non-space character? that is name */
-      {                                
+      {
         if( p->text != NULL )          /* if text buffer present, */
         {
           p->text[ p->text_index ] = c[0]; /* store current character of name */
+          n->name_length++;
         }
         p->text_index++;               /* go to next character */
       }
@@ -341,7 +344,7 @@ static int uxml_parse_inst( uxml_t *p )
         {
           if( n->child == NULL )       /* and no one attribute was parsed yet */
           {
-            n->child = p->node + p->node_index;  /* store attribute index */ 
+            n->child = p->node + p->node_index;  /* store attribute index */
           }
         }
         if( a != NULL )                /* if it is not first attribute */
@@ -353,6 +356,7 @@ static int uxml_parse_inst( uxml_t *p )
           a = p->node + p->node_index; /* current node for attribute */
           a->type = XML_ATTR;          /* this is attribute node */
           a->name = p->text + p->text_index; /* name of attribute */
+          a->name_length = 0;
           a->content = p->text;        /* add content later */
           a->size = 0;                 /* size of content is 0*/
           a->fullsize = 0;             /* full size of content is 0 too */
@@ -365,6 +369,7 @@ static int uxml_parse_inst( uxml_t *p )
         if( p->text != NULL )          /* if text buffer present, */
         {
           p->text[ p->text_index ] = c[0]; /* store first character of attribute's name */
+          a->name_length++;
         }
         p->text_index++;               /* prepare for next character */
       }
@@ -399,6 +404,7 @@ static int uxml_parse_inst( uxml_t *p )
         if( p->text != NULL )          /* if text buffer present, */
         {
           p->text[ p->text_index ] = c[0]; /* store next character of attribute's name */
+          a->name_length++;
         }
         p->text_index++;               /* go to next character */
       }
@@ -507,37 +513,39 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
   int last_child = 0;                  /* no children nodes yet */
 
   if( p->node != NULL )                /* real parsing? */
-  {                                    
+  {
     n = p->node + p->node_index;       /* use current node */
-                                       
+
     n->type = XML_NODE;                /* type of node */
     n->name = p->text + p->text_index; /* name of node */
+    n->name_length = 0;
     n->content = p->text;              /* there is no content yet */
     n->size = 0;
     n->fullsize = 0;
     n->instance = p;                   /* our instance */
     n->parent = parent_node;           /* no parent */
     n->child = NULL;                   /* no child node(s) yet */
-  }                                    
+  }
   p->node_index++;                     /* next node */
 
   if( p->text != NULL )                /* if text buffer present, */
   {
     p->text[ p->text_index ] = p->xml[ p->xml_index - 1 ];   /* store first character of name */
+    n->name_length++;
   }
   p->text_index++;                     /* go to next character */
 
   p->state = NODE_NAME;                /* new state - read instruction name */
   while( uxml_getc( p ) )          /* read new character */
-  {                                    
+  {
     if( p->state == NODE_NAME )        /* is name reading ? */
-    {                                  
+    {
       if( c[-1] == '/' && c[0] == '>' )
       {
         p->text_index++;               /* end name with zero-byte */
         p->state = state;              /* restore outer state */
         if( p->node != NULL )
-        {          
+        {
           if( parent_node != NULL )
           {
             if( parent_node->child == NULL )
@@ -558,10 +566,11 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
         p->state = NODE_CONTENT_TRIM;  /* start content dispatch */
       }
       else if( !isspace( c[0] ) )           /* non-space character? that is name */
-      {                                
+      {
         if( p->text != NULL )          /* if text buffer present, */
         {
           p->text[ p->text_index ] = c[0]; /* store current character of name */
+          n->name_length++;
         }
         p->text_index++;               /* go to next character */
         name_len++;                    /* length of node's name */
@@ -581,7 +590,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
         {
           if( n->child == NULL )          /* and no one attribute was parsed yet */
           {
-            n->child = p->node + p->node_index;  /* store attribute index */ 
+            n->child = p->node + p->node_index;  /* store attribute index */
           }
         }
         if( a != NULL )                /* if it is not first attribute */
@@ -593,6 +602,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
           a = p->node + p->node_index; /* current node for attribute */
           a->type = XML_ATTR;          /* this is attribute node */
           a->name = p->text + p->text_index; /* name of attribute */
+          a->name_length = 0;
           a->content = p->text;              /* add content later */
           a->size = 0;
           a->fullsize = 0;
@@ -606,6 +616,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
         if( p->text != NULL )          /* if text buffer present, */
         {
           p->text[ p->text_index ] = c[0]; /* store first character of attribute's name */
+          a->name_length++;
         }
         p->text_index++;               /* prepare for next character */
       }
@@ -613,7 +624,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
       {
         p->state = state;              /* restore outer state */
         if( p->node != NULL )
-        {          
+        {
           if( parent_node != NULL )
           {
             if( parent_node->child == NULL )
@@ -651,6 +662,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
         if( p->text != NULL )          /* if text buffer present, */
         {
           p->text[ p->text_index ] = c[0]; /* store next character of attribute's name */
+          a->name_length++;
         }
         p->text_index++;               /* go to next character */
       }
@@ -735,7 +747,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
     }
     else if( p->state == NODE_CONTENT_TRIM || p->state == NODE_CONTENT )
     {
-      if( (c[-1] == '<' && !escape[-1] && c[0] == '!' && !escape[0] ) || 
+      if( (c[-1] == '<' && !escape[-1] && c[0] == '!' && !escape[0] ) ||
           (c[-2] == '<' && !escape[-2] && c[-1] == '!' && !escape[-1] && c[0] == '-' && !escape[0] ) )
       {
         continue;
@@ -831,7 +843,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
             content_end = p->text_index;   /* and content's end */
           }
         }
-        else                           /* need to read content */        
+        else                           /* need to read content */
         {
           if( isspace( c[0] ) && !escape[0] )        /* all empty non-escaped characters will replaced with one space */
           {
@@ -885,7 +897,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
           }
         }
         if( p->node != NULL )
-        {          
+        {
           p->node[ node_index ].content = p->text + content_begin;
           if( parent_node != 0 )
           {
@@ -899,7 +911,7 @@ static int uxml_parse_node( uxml_t *p, uxml_node_t *parent_node )
         return node_index;             /* dispatch done */
       }
     }
-  } 
+  }
   if( p->error == NULL )
     p->error = "Unterminated node";
   return 0;
@@ -1074,7 +1086,7 @@ uxml_node_t *uxml_parse( const char *xml_data, const int xml_length, uxml_error_
       error->column = p->column;
     }
     return NULL;
-  }  
+  }
   p->node[0].next = p->node + i;
   return p->node + i;
 }
@@ -1126,7 +1138,7 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
 {
   uxml_t *p = node->instance;
   const char *path = ipath, *s1, *s2;
-  int i;
+  int i, j;
   uxml_node_t *k, *n = node;
 
   if( path == NULL )
@@ -1160,14 +1172,17 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
           continue;
         }
       }
+      j = s2 - s1;
       for( k = n->child; k != NULL; k = k->next )
       {
-        for( i = 0; i != (s2 - s1); i++ )
+        if( j != k->name_length )
+          continue;
+        for( i = 0; i != j; i++ )
         {
           if( s1[i] != k->name[i] )
             break;
         }
-        if( i == (s2 - s1) && k->name[i] == 0 )
+        if( i == j && k->name[i] == 0 )
         {
           n = k;
           s1 = s2 + 1;
@@ -1347,11 +1362,11 @@ static uxml_node_t *uxml_add_child_fill( uxml_t *p, uxml_node_t *s, uxml_node_t 
   p->nodes_count[ p->node_frag ]++;
 
   n->type = s->type;
-  
+
   n->name = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
   memcpy( n->name, s->name, strlen( (char *)s->name ) + 1 );
   p->text_size[ p->text_frag ] += (strlen( (char *)s->name ) + 1);
-  
+
   n->content = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
   memcpy( n->content, s->content, s->fullsize + 1 );
   p->text_size[ p->text_frag ] += (s->fullsize + 1);
@@ -1362,7 +1377,7 @@ static uxml_node_t *uxml_add_child_fill( uxml_t *p, uxml_node_t *s, uxml_node_t 
   n->parent = parent_node;
   n->next = NULL;
   n->child = NULL;
-  
+
   if( parent_node->child == NULL )
   {
     parent_node->child = n;
@@ -1503,7 +1518,7 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
   int i, in = 0;
   uxml_node_t *n;
 
-  for( i = 0; i < offset; i++ ) 
+  for( i = 0; i < offset; i++ )
     uxml_putchar( p, ' ' );
 
   uxml_putchar( p, '<' );
@@ -1543,9 +1558,9 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
     uxml_putchar( p, '\n' );
     if( node->size != 0 )
     {
-      for( i = 0; i < offset + 2; i++ ) 
+      for( i = 0; i < offset + 2; i++ )
         uxml_putchar( p, ' ' );
-      for( i = 0; i < node->size; i++ ) 
+      for( i = 0; i < node->size; i++ )
         uxml_put_escape( p, node->content[i] );
       uxml_putchar( p, '\n' );
     }
@@ -1556,7 +1571,7 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
         uxml_dump_internal( p, offset + 2, n );
       }
     }
-    for( i = 0; i < offset; i++ ) 
+    for( i = 0; i < offset; i++ )
       uxml_putchar( p, ' ' );
 
     uxml_putchar( p, '<' );
@@ -1690,7 +1705,7 @@ static uxml_node_t *uxml_new( uxml_node_t *node, const int node_type, const char
   p->nodes_count[ p->node_frag ]++;
 
   n->type = node_type;
-  
+
   n->name = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
   memcpy( n->name, name, name_size );
   p->text_size[ p->text_frag ] += name_size;
@@ -1713,7 +1728,7 @@ static uxml_node_t *uxml_new( uxml_node_t *node, const int node_type, const char
   n->parent = node;
   n->next = NULL;
   n->child = NULL;
-  
+
   if( node->child == NULL )
   {
     node->child = n;
@@ -1784,14 +1799,15 @@ void uxml_dump_list( uxml_node_t *root )
 
   for( i = 0; i < p->nodes_count[0]; i++ )
   {
-    printf( "%d: %s name=\"%s\" content=\"%s\" size=%d parent=%d child=%d next=%d",
-      i, 
+    printf( "%d: %s name=\"%s\"(%d) content=\"%s\" size=%d parent=%d child=%d next=%d",
+      i,
       p->node[i].type == XML_NODE ? "node": (p->node[i].type == XML_ATTR ? "attr": (p->node[i].type == XML_INST ? "inst": (p->node[i].type == XML_NONE ? "none": "????"))),
       p->node[i].name,
+      p->node[i].name_length,
       p->node[i].content,
       p->node[i].size,
       p->node[i].parent == NULL ? 0: p->node[i].parent - p->node,
-      p->node[i].child  == NULL ? 0: p->node[i].child - p->node, 
+      p->node[i].child  == NULL ? 0: p->node[i].child - p->node,
       p->node[i].next == NULL ? 0: p->node[i].next - p->node );
     if( p->node[i].modcount != 0 )
       printf( " modcount=%d", p->node[i].modcount );

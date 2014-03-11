@@ -1,5 +1,10 @@
 cmake_minimum_required( VERSION 2.6 )
 project( uxml )
+if( WIN32 AND NOT MSVC )
+set( CMAKE_C_FLAGS_DEBUG "-pg" )
+set( CMAKE_EXE_LINKER_FLAGS_DEBUG "-pg" )
+endif()
+
 include_directories( ${CMAKE_SOURCE_DIR} )
 
 add_library( uxml uxml.c )
