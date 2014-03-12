@@ -1352,8 +1352,8 @@ static uxml_node_t *uxml_add_child_fill( uxml_t *p, uxml_node_t *s, uxml_node_t 
   n->type = s->type;
 
   n->name = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
-  memcpy( n->name, s->name, strlen( (char *)s->name ) + 1 );
-  p->text_size[ p->text_frag ] += (strlen( (char *)s->name ) + 1);
+  memcpy( n->name, s->name, (n->name_length = strlen( (char *)s->name )) + 1 );
+  p->text_size[ p->text_frag ] += (n->name_length + 1);
 
   n->content = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
   memcpy( n->content, s->content, s->fullsize + 1 );
@@ -1696,6 +1696,7 @@ static uxml_node_t *uxml_new( uxml_node_t *node, const int node_type, const char
 
   n->name = p->atext[ p->text_frag ] + p->text_size[ p->text_frag ];
   memcpy( n->name, name, name_size );
+  n->name_length = name_size - 1;
   p->text_size[ p->text_frag ] += name_size;
 
   if( content_size != 0 )
