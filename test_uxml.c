@@ -19,6 +19,7 @@ int test( const char *x )
 
   if( (root = uxml_parse( x, n, &e )) == NULL ) 
     return print_error( &e );
+  printf( "===\n%s---\n", x );
   uxml_dump_list( root );
   printf( "---\n" );
   uxml_free( root );
@@ -40,6 +41,7 @@ int test_navigate()
   if( (root = uxml_parse( xml, sizeof( xml ), &e )) == NULL ) 
     return print_error( &e );
 
+  printf( "===\n%s---\n", xml );
   printf( "root content=\"%s\"\n", uxml_get( root, NULL ) );
   printf( "/attrR1=\"%s\"\n", uxml_get( root, "/attrR1" ) );
   printf( "attrR1=\"%s\"\n", uxml_get( root, "attrR1" ) );
@@ -110,24 +112,24 @@ int test_base64()
   static const unsigned char c[] = "9876543210", f[] = "OTg3 Nj U0Mz IxMA==";
   int i, k;
 
-  if( (i = uxml_encode64( b, sizeof( b ), c, strlen( c ) )) == 0 )
+  if( (i = uxml_encode64( b, sizeof( b ), c, sizeof( c ) - 1 )) == 0 )
   {
     printf( "uxml_encode64 failed\n" );
     return 0;
   }
-  if( strcmp( b, "OTg3NjU0MzIxMA==" ) != 0 )
+  if( strcmp( (char *)b, "OTg3NjU0MzIxMA==" ) != 0 )
   {
     printf( "uxml_encode64 failed\n" );
     return 0;
   }
   printf( "encode64 \"%s\" -> \"%s\"\n", c, b );
-  if( (k = uxml_decode64( d, sizeof( d ), f, strlen( f ) )) == 0 )
+  if( (k = uxml_decode64( d, sizeof( d ), f, sizeof( f ) - 1 )) == 0 )
   {
     printf( "uxml_decode64 failed\n" );
     return 0;
   }
   d[k] = 0;
-  if( strcmp( d, c ) != 0 )
+  if( memcmp( d, c, sizeof( c ) - 1 ) != 0 )
   {
     printf( "uxml_decode64 failed\n" );
     return 0;
@@ -200,7 +202,7 @@ int test_new()
   return 1;
 }
 
-main()
+int main()
 {
   const char test_header_and_empty_root[] = 
     "<?xml version='1.0' encoding='UTF-8'?>\n"
