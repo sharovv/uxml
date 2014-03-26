@@ -40,7 +40,7 @@ int main( int argc, char *argv[] )
   uxml_node_t *r;
   uxml_error_t e;
   time_t t, t0;
-  ticks_t tck;
+  ticks_t tck, freq;
 
   for( i = 1; i < argc; i++ )
   {
@@ -75,9 +75,12 @@ int main( int argc, char *argv[] )
     return fprintf( stderr, "fread failed\n" );
   }
 
-  t0 = time( &t0 );
+  for( t0 = time( &t0 ); time( &t ) == t0; );
   tck = ticks();
-
+  for( t0 = t; time( &t ) == t0; );
+  freq = ticks() - tck;
+  
+  tck = ticks();
   do
   {
     if( (r = uxml_parse( b, n, &e )) == NULL )
@@ -89,12 +92,13 @@ int main( int argc, char *argv[] )
     t = time( &t ) - t0;
     k++;
   }
-  while( t < 10 );
+  while( (ticks() - tck) < 5 * freq );
   tck = ticks() - tck;
 
-  printf( "%d ticks/character, %d bytes/s, %d bytes allocated (%d%% overhead)\n", 
+  printf( "CPU %.3lf GHz: %d ticks/character, %d bytes/s, %d bytes allocated (%d%% overhead)\n", 
+  (double)( 0.000000001 * freq ),
   (int)(tck / (n * k)),
-  (int)(n * k / t),
+  (int)(freq * n * k / tck),
   j,
   (j - n) * 100 / n );
 
