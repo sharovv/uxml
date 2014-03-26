@@ -89,10 +89,14 @@ int main( int argc, char *argv[] )
     t = time( &t ) - t0;
     k++;
   }
-  while( t < 5 );
+  while( t < 10 );
   tck = ticks() - tck;
 
-  printf( "%d ticks/character, %d bytes allocated (%d%% overhead)\n", (int)(tck / (n * k)), j, (j - n) * 100 / n );
+  printf( "%d ticks/character, %d bytes/s, %d bytes allocated (%d%% overhead)\n", 
+  (int)(tck / (n * k)),
+  (int)(n * k / t),
+  j,
+  (j - n) * 100 / n );
 
   free( b );
   return 0;
