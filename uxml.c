@@ -1613,11 +1613,11 @@ static void uxml_dump_internal( uxml_t *p, const int offset, uxml_node_t *node )
   }
 }
 
-unsigned char *uxml_dump( uxml_node_t *root, unsigned char *dump, const int max_dump, int *dump_size )
+char *uxml_dump( uxml_node_t *root, char *dump, const int max_dump, int *dump_size )
 {
   uxml_t *p = root->instance;
   int i = 0;
-  unsigned char *t;
+  char *t;
 
   t = p->dump;
   p->dump = NULL;
@@ -1678,7 +1678,7 @@ unsigned char *uxml_dump( uxml_node_t *root, unsigned char *dump, const int max_
   return t;
 }
 
-void uxml_dump_free( unsigned char *dump )
+void uxml_dump_free( char *dump )
 {
   if( dump != NULL ) free( dump );
 }
@@ -1852,12 +1852,12 @@ int uxml_get_initial_allocated( uxml_node_t *root )
  * D2 = XXX XXX S13 S12 S11 S10 S27 S26
  * D3 = XXX XXX S25 S24 S23 S22 S21 S20
  */
-static const unsigned char base64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static const char base64[]="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 static const char base64_decode_tab[256]={-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-1,-1,-1,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,-1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1};
 
-int uxml_encode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src )
+int uxml_encode64( char *dst, const int n_dst, const void *src, const int n_src )
 {
-  unsigned char *d;
+  char *d;
   const unsigned char *s;
   int n, k;
 
@@ -1885,13 +1885,13 @@ int uxml_encode64( unsigned char *dst, const int n_dst, const unsigned char *src
   return (d + 5 - dst);
 }
 
-int uxml_decode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src )
+int uxml_decode64( void *dst, const int n_dst, const char *src, const int n_src )
 {
   unsigned char *d;
   const unsigned char *s;
   int i, n, k, v[4];
 
-  for( i = 0, n = n_src, s = src, k = n_dst, d = dst; n != 0; s++, n-- )
+  for( i = 0, n = n_src, s = (const unsigned char *)src, k = n_dst, d = dst; n != 0; s++, n-- )
   {
     if( base64_decode_tab[ s[0] ] < 0 )
       continue;
@@ -1921,5 +1921,5 @@ int uxml_decode64( unsigned char *dst, const int n_dst, const unsigned char *src
       }
     }
   }
-  return (d - dst);
+  return (d - (unsigned char *)dst);
 }

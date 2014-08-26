@@ -241,7 +241,7 @@ void uxml_free( uxml_node_t *root );
  * \return pointer to specified buffer, or new memory area in the case of an allocation,
  * or NULL if dump_size exceeds max_dump.
  */
-unsigned char *uxml_dump( uxml_node_t *root, unsigned char *dump, const int max_dump, int *dump_size );
+char *uxml_dump( uxml_node_t *root, char *dump, const int max_dump, int *dump_size );
 
 /*! Free XML dump
  *
@@ -249,7 +249,7 @@ unsigned char *uxml_dump( uxml_node_t *root, unsigned char *dump, const int max_
  * there is need to free allocated dump buffer by \c uxml_dump_free.
  * \param dump - pointer, previously returned by uxml_dump call.
  */
-void uxml_dump_free( unsigned char *dump );
+void uxml_dump_free( char *dump );
 
 /*! Encode to base64 sequence
  *
@@ -263,7 +263,7 @@ void uxml_dump_free( unsigned char *dump );
  * \param n_src - size of original binary data in bytes.
  * \return size of encoded sequence in bytes, stored in \c dst buffer;
  */
-int uxml_encode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src );
+int uxml_encode64( char *dst, const int n_dst, const void *src, const int n_src );
 
 /*! Decode from base64 sequence
  *
@@ -274,7 +274,7 @@ int uxml_encode64( unsigned char *dst, const int n_dst, const unsigned char *src
  * \param n_src - size of original base64 character sequence.
  * \return size of decoded binary data in bytes, stored in \c dst buffer;
  */
-int uxml_decode64( unsigned char *dst, const int n_dst, const unsigned char *src, const int n_src );
+int uxml_decode64( void *dst, const int n_dst, const char *src, const int n_src );
 
 #ifdef __cplusplus
 }
