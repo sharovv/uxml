@@ -60,7 +60,7 @@ int test_navigate()
 int test_add()
 {
   uxml_node_t *ra, *rb, *c;
-  unsigned char *s;
+  char *s;
 
   const char xml_a[] = 
     "<?xml version='1.0' encoding='UTF-8'?>\n"
@@ -108,8 +108,8 @@ int test_add()
 
 int test_base64()
 {
-  unsigned char b[64], d[64];
-  static const unsigned char c[] = "9876543210", f[] = "OTg3 Nj U0Mz IxMA==";
+  char b[64], d[64];
+  static const char c[] = "9876543210", f[] = "OTg3 Nj U0Mz IxMA==";
   int i, k;
 
   if( (i = uxml_encode64( b, sizeof( b ), c, sizeof( c ) - 1 )) == 0 )
@@ -117,7 +117,7 @@ int test_base64()
     printf( "uxml_encode64 failed\n" );
     return 0;
   }
-  if( strcmp( (char *)b, "OTg3NjU0MzIxMA==" ) != 0 )
+  if( strcmp( b, "OTg3NjU0MzIxMA==" ) != 0 )
   {
     printf( "uxml_encode64 failed\n" );
     return 0;
@@ -187,7 +187,7 @@ int test_new()
     "contentR\n"
     "<nodeA attrA1='valueA1'/>\n"
     "</nodeR>";
-  unsigned char *s;
+  char *s;
 
   if( (x = uxml_parse( xml, sizeof( xml ), &e )) == NULL ) 
     return print_error( &e );
@@ -245,7 +245,7 @@ int main()
     "<?xml version='1.0' encoding='UTF-8'?>\n"
     "<!-- comment -->\n"
     "<nodeR attrR=\"&lt;&gt;&amp;&apos;&quot;&#64;&#x4A;\"> &lt; &gt; &amp; &apos; &quot; &#64; &#x4A; </nodeR>\n";
-  
+
   if( !test( test_header_and_empty_root ) ) return 1;
   if( !test( test_root_comment ) ) return 1;
   if( !test( test_node_empty_content ) ) return 1;
