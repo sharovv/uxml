@@ -1163,6 +1163,18 @@ uxml_node_t *uxml_next( uxml_node_t *node )
   return node->next;
 }
 
+uxml_node_t *uxml_prev( uxml_node_t *node )
+{
+  uxml_node_t *prev = NULL, *n = node->parent;
+
+  if( n == NULL ) return NULL;
+  for( n = n->child; n != node; n = n->next )
+  {
+    prev = n;
+  }
+  return prev;
+}
+
 const char *uxml_name( uxml_node_t *node )
 {
   return (const char *)node->name;

@@ -197,6 +197,13 @@ uxml_node_t *uxml_child_node( uxml_node_t *node );
  */
 uxml_node_t *uxml_next( uxml_node_t *node );
 
+/*! Get previous node
+ *
+ * \param node - node's pointer.
+ * \return Previous node, or NULL if this is first child of parent node.
+ */
+uxml_node_t *uxml_prev( uxml_node_t *node );
+
 /*! Create new node
  *
  * Creates a new node and add it to the specified \n node.
