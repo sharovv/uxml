@@ -74,6 +74,11 @@ uxml_node_t *uxml_load( const char *xml_file, uxml_error_t *error );
  * And else, if path's first character is not '/', 
  * then path is relative from specified node.
  * Also, special characters ".." instead the name means the parent node's access.
+ * Node's path can choose one node from array. For example,
+ * if multiple nodes with same name "abc" exists, the name "abc[N]" means
+ * N-th node in the row of "abc" nodes, numbering starts from 0.
+ * Moreover, name can substitute with wildcard "*", in this case
+ * no differences in names.
  * When content of specified \c node is needed, the path must point to
  * empty string "" or to NULL.
  * Returned pointer is pointed to node content.

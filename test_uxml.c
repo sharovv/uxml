@@ -37,6 +37,17 @@ int test_navigate()
     "<nodeA attrA1='valueA1'/>\n"
     "<nodeB attrB1='valueB1'>contentB<attrB2>valueB2</attrB2></nodeB>\n"
     "<nodeC/>\n"
+    "<nodeD>contentD0</nodeD>\n"
+    "<nodeD>contentD1</nodeD>\n"
+    "<nodeD>\n"
+      "contentD2\n"
+      "<nodeDD>contentDD0</nodeDD>\n"
+      "<nodeDDX>contentDDX</nodeDDX>\n"
+      "<nodeDD>contentDD1</nodeDD>\n"
+      "<nodeDD>contentDD2</nodeDD>\n"
+    "</nodeD>\n"
+    "<nodeD>contentD3</nodeD>\n"
+    "<nodeD>contentD4</nodeD>\n"
     "</nodeR>";
 
   if( (root = uxml_parse( xml, sizeof( xml ), &e )) == NULL ) 
@@ -56,6 +67,10 @@ int test_navigate()
   printf( "../nodeB/attrB2=\"%s\"\n", uxml_get( node, "../nodeB/attrB2" ) );
   printf( "prev of nodeB is %s\n", uxml_name( uxml_prev( uxml_node( root, "nodeB" ) ) ) );
   printf( "next of nodeB is %s\n", uxml_name( uxml_next( uxml_node( root, "nodeB" ) ) ) );
+  printf( "/nodeD[4]=\"%s\"\n", uxml_get( root, "/nodeD[4]" ) );
+  printf( "/nodeD[2]/*=\"%s\"\n", uxml_get( root, "/nodeD[2]/*" ) );
+  printf( "/nodeD[2]/*[1]=\"%s\"\n", uxml_get( root, "/nodeD[2]/*[1]" ) );
+  printf( "/nodeD[2]/nodeDD[1]=\"%s\"\n", uxml_get( root, "/nodeD[2]/nodeDD[1]" ) );
   uxml_free( root );
   return 1;
 }

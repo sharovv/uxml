@@ -1180,33 +1180,46 @@ const char *uxml_name( uxml_node_t *node )
   return (const char *)node->name;
 }
 
+#define MASK_SQUARE_OPEN  1
+#define MASK_SQUARE_CLOSE 2
+#define MASK_INDEX        4
+#define MASK_WILDCARD     8
+
 uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
 {
   uxml_t *p = node->instance;
   const char *path = ipath, *s1, *s2;
-  int j;
+  int c, i, len, mask = 0, index = 0;
   uxml_node_t *n = node;
 
+  /* NULL path is equal to empty string */
   if( path == NULL )
   {
     path = "";
   }
+  /* Go from root? */
   if( path[0] == '/' )
   {
     n = p->node[0].next;
     path++;
   }
-  for( s1 = path, s2 = path; *s2 != 0; s2++ )
+  /* scan string */
+  for( s1 = path, s2 = path, len = 0; *s2 != 0; s2++ )
   {
-    if( *s2 == '/' )
+    /* current character */
+    c = *s2;
+    /* separator ? */
+    if( c == '/' )
     {
+      /* empty name? - skip it */
       if( s1 == s2 )
       {
         s1 = s2 + 1;
+        len = 0;
         continue;
       }
-      j = s2 - s1;
-      if( j == 2 )
+      /* special case of ".." - parent node */
+      if( len == 2 )
       {
         if( s1[0] == '.' && s1[1] == '.' )
         {
@@ -1216,45 +1229,184 @@ uxml_node_t *uxml_node( uxml_node_t *node, const char *ipath )
           }
           n = n->parent;
           s1 = s2 + 1;
+          len = 0;
           continue;
         }
       }
-      for( n = n->child; n != NULL; n = n->next )
+      /* mask of name */
+      switch( mask )
       {
-        if( j == n->name_length )
+      case 0: /* regular case - name only */
+        for( n = n->child; n != NULL; n = n->next )
         {
-          if( memcmp( s1, n->name, j ) == 0 )
+          /* look at only same length names */
+          if( len == n->name_length )
           {
-            s1 = s2 + 1;
-            break;
+            /* is our name? */
+            if( memcmp( s1, n->name, len ) == 0 )
+            {
+              /* go next */
+              s1 = s2 + 1;
+              len = 0;
+              break;
+            }
           }
         }
+        break;
+      case MASK_WILDCARD: /* wildcard "*" instead name */
+        n = n->child; /* first child gettin' */
+        break;
+      case (MASK_SQUARE_OPEN | MASK_INDEX | MASK_SQUARE_CLOSE):
+        /* index present, but no wildcard */
+        for( i = 0, n = n->child; n != NULL; n = n->next )
+        {
+          /* only nodes is considered */
+          if( n->type != XML_NODE )
+            continue;
+          /* look at only same length names */
+          if( len == n->name_length )
+          {
+            /* is our name? */
+            if( memcmp( s1, n->name, len ) == 0 )
+            {
+              /* and our index? */
+              if( i == index )
+              {
+                /* go next */
+                s1 = s2 + 1;
+                len = 0;
+                break;
+              }
+              /* next index */
+              i++;
+            }
+          }
+        }
+        break;
+      case (MASK_WILDCARD | MASK_SQUARE_OPEN | MASK_INDEX | MASK_SQUARE_CLOSE):
+        /* wildcard and index, i.e. *[NN] */
+        for( i = 0, n = n->child; n != NULL; n = n->next )
+        {
+          /* only nodes */
+          if( n->type != XML_NODE )
+            continue;
+          /* only index compare */
+          if( i == index )
+          {
+            /* go next */
+            s1 = s2 + 1;
+            len = 0;
+            break;
+          }
+          /* next index */
+          i++;
+        }
+        break;
+      default:
+        /* other cases is wrong */
+        n = NULL;
+        break; 
       }
+      /* if NULL, nothing to do */
       if( n == NULL )
       {
         return NULL;
       }
+      /* new name, clear mask */
+      mask = 0;
+    }
+    else if( c == '*' && s1 == s2 )
+    {
+      /* wildcard is only one first character */
+      mask |= MASK_WILDCARD;
+    }
+    else if( c == '[' && s1 != s2 )
+    {
+      /* square brackets only after non-zero name or wildcard */
+      mask |= MASK_SQUARE_OPEN;
+      index = 0;
+    }
+    else if( isdigit( c ) && (mask & MASK_SQUARE_OPEN) != 0 )
+    {
+      mask |= MASK_INDEX;
+      index = index * 10 + (c - '0');
+    }
+    else if( c == ']' && (mask & (MASK_SQUARE_OPEN | MASK_INDEX)) == (MASK_SQUARE_OPEN | MASK_INDEX) )
+    {
+      mask |= MASK_SQUARE_CLOSE;
+    }
+    else if( mask != 0 )
+    {
+      /* all other cases means bad syntax in path */
+      return NULL;
+    }
+    else
+    {
+      len++;
     }
   }
   if( s2 != s1 )
   {
-    j = s2 - s1;
-    if( j == 2 )
+    if( len == 2 )
     {
       if( s1[0] == '.' && s1[1] == '.' )
       {
         return n->parent;
       }
     }
-    for( n = n->child; n != NULL; n = n->next )
+    switch( mask )
     {
-      if( j == n->name_length )
+    case 0:
+      for( n = n->child; n != NULL; n = n->next )
       {
-        if( memcmp( s1, n->name, j ) == 0 )
+        if( len == n->name_length )
         {
-          break;
+          if( memcmp( s1, n->name, len ) == 0 )
+          {
+            s1 = s2 + 1;
+            break;
+          }
         }
       }
+      break;
+    case MASK_WILDCARD:
+      n = n->child;
+      break;
+    case (MASK_SQUARE_OPEN | MASK_INDEX | MASK_SQUARE_CLOSE):
+      for( i = 0, n = n->child; n != NULL; n = n->next )
+      {
+        if( n->type != XML_NODE )
+          continue;
+        if( len == n->name_length )
+        {
+          if( memcmp( s1, n->name, len ) == 0 )
+          {
+            if( i == index )
+            {
+              s1 = s2 + 1;
+              break;
+            }
+            i++;
+          }
+        }
+      }
+      break;
+    case (MASK_WILDCARD | MASK_SQUARE_OPEN | MASK_INDEX | MASK_SQUARE_CLOSE):
+      for( i = 0, n = n->child; n != NULL; n = n->next )
+      {
+        if( n->type != XML_NODE )
+          continue;
+        if( i == index )
+        {
+          s1 = s2 + 1;
+          break;
+        }
+        i++;
+      }
+      break;
+    default:
+      n = NULL;
+      break; 
     }
   }
   return n;
