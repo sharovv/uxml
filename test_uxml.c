@@ -258,6 +258,7 @@ int main()
     "<nodeR>\n"
     "<nodeA attrA1=\"valueA1\" attrA2=\"valueA2\"/>\n"
     "<nodeB attrB1=\"valueB1\" attrB2=\"valueB2\">  contentB_a <!-- commentB --> contentB_b <nodeC/> contentB_c <nodeD> contentD </nodeD></nodeB>\n"
+    "<_1 attr_1=\"value_1\"> content_1 </_1>\n"
     "</nodeR>\n";
   const char test_escape[] = 
     "<?xml version='1.0' encoding='UTF-8'?>\n"

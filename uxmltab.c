@@ -8,7 +8,7 @@ static signed char base64_decode_tab[256];
 
 int main()
 {
-  static unsigned long u;
+  static unsigned int u;
   static const char *comma[2] = { ",", "" };
   int i, j;
 
@@ -24,7 +24,7 @@ int main()
   for( i = 0; i < 256; i++ ) printf( "%s%d", comma[ i == 0 ], isspace( i ) );
   printf( "};\n" );
 
-  printf( "static const unsigned long uxml_isdigit_tab32[8]={" );
+  printf( "static const unsigned int uxml_isdigit_tab32[8]={" );
   for( i = 0; i < 8; i++ )
   {
     u = 0;
@@ -37,19 +37,20 @@ int main()
   printf( "};\n" );
 
 
-  printf( "static const unsigned long uxml_isalpha_tab32[8]={" );
+  printf( "static const unsigned int uxml_isalpha_tab32[8]={" );
   for( i = 0; i < 8; i++ )
   {
     u = 0;
     for( j = 0; j < 32; j++ )
     {
       u |= (isalpha( i * 32 + j ) << j);
+      if( (i * 32 + j) == '_' ) u |= (1 << j);
     }
     printf( "%s0x%08lX", comma[ i == 0 ], u );
   }
   printf( "};\n" );
 
-  printf( "static const unsigned long uxml_isspace_tab32[8]={" );
+  printf( "static const unsigned int uxml_isspace_tab32[8]={" );
   for( i = 0; i < 8; i++ )
   {
     u = 0;
@@ -69,6 +70,9 @@ int main()
   }
   for( i = 0; i < sizeof( base64_decode_tab ); i++ ) printf( "%s%d", comma[ i == 0 ], base64_decode_tab[i] );
   printf( "};\n" );
+
+  printf( "isalpha('_')=%d\n", isalpha( '_' ) );
+  printf( "isspace('_')=%d\n", isspace( '_' ) );
 
   return 0;
 }

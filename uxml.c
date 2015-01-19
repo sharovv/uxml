@@ -147,9 +147,10 @@ static const char uxml_isspace_tab[256]={0,0,0,0,0,0,0,0,0,1,1,0,0,1,0,0,0,0,0,0
 #define isspace( c ) uxml_isspace_tab[ c ]
 */
 
-static const unsigned long uxml_isdigit_tab32[8]={0x00000000,0x03FF0000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000};
-static const unsigned long uxml_isalpha_tab32[8]={0x00000000,0x00000000,0x07FFFFFE,0x07FFFFFE,0x00000000,0x00000000,0x00000000,0x00000000};
-static const unsigned long uxml_isspace_tab32[8]={0x00002600,0x00000001,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000};
+static const unsigned int uxml_isdigit_tab32[8]={0x00000000,0x03FF0000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000};
+static const unsigned int uxml_isalpha_tab32[8]={0x00000000,0x00000000,0x87FFFFFE,0x07FFFFFE,0x00000000,0x00000000,0x00000000,0x00000000};
+static const unsigned int uxml_isspace_tab32[8]={0x00002600,0x00000001,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000,0x00000000};
+
 
 #define isdigit( c ) ((uxml_isdigit_tab32[ c >> 5 ] >> (c & 0x1F))&1)
 #define isalpha( c ) ((uxml_isalpha_tab32[ c >> 5 ] >> (c & 0x1F))&1)
