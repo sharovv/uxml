@@ -1486,7 +1486,7 @@ int uxml_set( uxml_node_t *node, const char *path, const char *value, const int 
   else
     size = size0 + 1;
 
-  if( size > (n->fullsize + 1) )
+  if( size >= (n->fullsize + 1) )
   {
     if( size > (p->text_allocated[ p->text_frag ] - p->text_size[ p->text_frag ]) )
     {
