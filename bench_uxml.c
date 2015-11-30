@@ -95,7 +95,7 @@ int main( int argc, char *argv[] )
   while( (ticks() - tck) < 5 * freq );
   tck = ticks() - tck;
 
-  printf( "CPU %.3lf GHz: %d ticks/character, %d bytes/s, %d bytes allocated (%d%% overhead)\n", 
+  printf( "CPU %.3f GHz: %d ticks/character, %d bytes/s, %d bytes allocated (%d%% overhead)\n", 
   (double)( 0.000000001 * freq ),
   (int)(tck / (n * k)),
   (int)(freq * n * k / tck),
