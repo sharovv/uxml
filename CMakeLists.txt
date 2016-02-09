@@ -1,8 +1,9 @@
 cmake_minimum_required( VERSION 2.6 )
 project( uxml )
 if( NOT MSVC )
-set( CMAKE_C_FLAGS_DEBUG "-pg -Wall" )
-set( CMAKE_EXE_LINKER_FLAGS_DEBUG "-pg" )
+set( CMAKE_C_FLAGS_RELEASE "-O2 -Wall" )
+set( CMAKE_C_FLAGS_DEBUG "-g -Wall" )
+set( CMAKE_EXE_LINKER_FLAGS_DEBUG "-g" )
 endif()
 
 include_directories( ${CMAKE_SOURCE_DIR} )

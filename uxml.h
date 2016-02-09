@@ -117,30 +117,6 @@ int uxml_int( uxml_node_t *node, const char *path );
 double uxml_double( uxml_node_t *node, const char *path );
 #endif
 
-/*! Copy node's content
- *
- * Copy content of specified node to the user buffer.
- * This call must to use with the "read-write" access to XML data.
- * If the node has no content, then only zero byte will be copied.
- * \param node - node's pointer, root or branch.
- * \param path - node's path, see \c uxml_content description.
- * \return number of copied bytes.
- */
-int uxml_copy( uxml_node_t *node, const char *path, char *buffer, const int buffer_size );
-
-/*! Set node's content
- *
- * Set the content of specified node to specified value.
- * If specified node is exist, their "modification count" increment automatically.
- * This modification count (or "modcount") can be used to check
- * whatever the content was changed.
- */
-int uxml_set( uxml_node_t *node, const char *path, const char *value, const int size );
-
-/*! Get modification count
- */
-int uxml_modcount( uxml_node_t *node, const char *path );
-
 /*! Return user's pointer
  */
 void *uxml_user( uxml_node_t *node, const char *path );
@@ -209,59 +185,12 @@ uxml_node_t *uxml_next( uxml_node_t *node );
  */
 uxml_node_t *uxml_prev( uxml_node_t *node );
 
-/*! Create new node
- *
- * Creates a new node and add it to the specified \n node.
- * \param node - pointer of parent node;
- * \param name - name of new node;
- * \param content - content of new node, or NULL if no content should be added;
- * \return Pointer to newly created node, or NULL in case of error.
- */
-uxml_node_t *uxml_new_node( uxml_node_t *node, const char *name, const char *content );
-
-/*! Create new attribute
- *
- * Creates a new attribute for the specified \n node.
- * \param node - pointer of desired node;
- * \param name - name of new attribute;
- * \param content - content of new attribute, or NULL in case of emtpy attribute;
- * \return Pointer to newly created attribute, or NULL in case of error.
- */
-uxml_node_t *uxml_new_attr( uxml_node_t *node, const char *name, const char *content );
-
-/*! Add child node
- */
-int uxml_add_child( uxml_node_t *node, uxml_node_t *child );
-
 /*! Free XML tree
  *
  * \param node - root node's pointer;
  * Frees whole XML tree, and no nodes can be accessed after this call.
  */
 void uxml_free( uxml_node_t *root );
-
-/*! Get XML dump
- *
- * Dump XML data to the text, that can be parsed again.
- * Special symbols is written as an escapes.
- * \param dump - pointer to buffer where dump will be stored, 
- * or NULL in case for allocate a new buffer - 
- * need to be freed with \c uxml_dump_free call;
- * \param max_dump - size of buffer in bytes, or 0 if buffer is NULL;
- * \param dump_size - pointer to an integer, which will be filled with 
- * number of bytes in dump, including zero byte termination.
- * \return pointer to specified buffer, or new memory area in the case of an allocation,
- * or NULL if dump_size exceeds max_dump.
- */
-char *uxml_dump( uxml_node_t *root, char *dump, const int max_dump, int *dump_size );
-
-/*! Free XML dump
- *
- * If previous succesfull \c uxml_dump call was made with NULL buffer's pointer, 
- * there is need to free allocated dump buffer by \c uxml_dump_free.
- * \param dump - pointer, previously returned by uxml_dump call.
- */
-void uxml_dump_free( char *dump );
 
 /*! Encode to base64 sequence
  *

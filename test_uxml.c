@@ -22,6 +22,7 @@ int test( const char *x )
   printf( "===\n%s---\n", x );
   uxml_dump_list( root );
   printf( "---\n" );
+  fflush( stdout );
   uxml_free( root );
   return 1;
 }
@@ -75,55 +76,6 @@ int test_navigate()
   return 1;
 }
 
-int test_add()
-{
-  uxml_node_t *ra, *rb, *c;
-  char *s;
-
-  const char xml_a[] = 
-    "<?xml version='1.0' encoding='UTF-8'?>\n"
-    "<nodeRA attrRA1='valueRA1'>\n"
-    "contentRA &lt;&#9;&gt;&amp;&apos;&quot;\n"
-    "<nodeA attrA1='valueA1'/>\n"
-    "<nodeB attrB1='valueB1' attrB2='valueB2 &lt;&#9;&gt;&amp;&apos;&quot;'>contentB</nodeB>\n"
-    "</nodeRA>";
-
-  const char xml_b[] = 
-    "<?xml version='1.0' encoding='UTF-8'?>\n"
-    "<nodeRB attrR1='valueRB'>\n"
-    "contentRB\n"
-    "<nodeC attrC1='valueC1'>contentC</nodeC>\n"
-    "</nodeRB>";
-
-  if( (ra = uxml_parse( xml_a, sizeof( xml_a ), &e )) == NULL ) 
-    return print_error( &e );
-
-  s = uxml_dump( ra, NULL, 0, NULL );
-  printf( "%s", s );
-  uxml_dump_free( s );
-
-  if( (rb = uxml_parse( xml_b, sizeof( xml_b ), &e )) == NULL ) 
-    return print_error( &e );
-
-  printf( "= a =\n" );
-  uxml_dump_list( ra );
-  printf( "= b =\n" );
-  uxml_dump_list( rb );
-  printf( "= a + b =\n" );
-
-  c = uxml_node( rb, "/nodeC" );
-  uxml_add_child( ra, c );
-  uxml_dump_list( ra );
-
-  s = uxml_dump( ra, NULL, 0, NULL );
-  printf( "%s", s ); 
-  uxml_dump_free( s );
-
-  uxml_free( ra );
-  uxml_free( rb );
-  return 1;
-}
-
 int test_base64()
 {
   char b[64], d[64];
@@ -153,70 +105,6 @@ int test_base64()
     return 0;
   }
   printf( "decode64 \"%s\" -> \"%s\"\n", f, d );
-  return 1;
-}
-
-int test_set()
-{
-  uxml_node_t *a;
-  char t[16];
-
-  const char xml_a[] = 
-    "<?xml version='1.0' encoding='UTF-8'?>\n"
-    "<nodeR attrR1='valueR1'>\n"
-    "contentR\n"
-    "<nodeA attrA1='valueA1'/>\n"
-    "<nodeB attrB1='valueB1' attrB2='valueB2'>contentB</nodeB>\n"
-    "</nodeR>";
-
-  if( (a = uxml_parse( xml_a, sizeof( xml_a ), &e )) == NULL ) 
-    return print_error( &e );
-
-  printf( "=== test_set origin ===\n" );
-
-  uxml_dump_list( a );
-
-  uxml_set( a, "/nodeA", "12345", 0 );
-  uxml_set( a, "/nodeA/attrA1", "valueA1+valueA2+valueA3+valueA4+valueA5+valueA6", 0 );
-  uxml_set( a, "/nodeB", "contentB1+contentB2+contentB3+contentB4", 0 );
-  uxml_set( a, "/nodeB/attrB1", "valueB1+valueB2+valueB3+valueB4+valueB5+valueB6", 0 );
-
-  printf( "=== test_set result1 ===\n" );
-  uxml_dump_list( a );
-
-  uxml_set( a, "/nodeB/attrB2", "valueBB1+valueBB2+valueBB3+valueBB4+valueBB5+valueBB6", 0 );
-
-  printf( "=== test_set result2 ===\n" );
-  uxml_dump_list( a );
-
-  uxml_copy( a, "/nodeA", t, sizeof( t ) );
-  printf( "copy(/nodeA)=\"%s\"\n", t );
-
-  uxml_free( a );
-  return 1;
-}
-
-int test_new()
-{
-  uxml_node_t *x, *b;
-  static const char xml[] = 
-    "<?xml version='1.0' encoding='UTF-8'?>\n"
-    "<nodeR attrR1='valueR1'>\n"
-    "contentR\n"
-    "<nodeA attrA1='valueA1'/>\n"
-    "</nodeR>";
-  char *s;
-
-  if( (x = uxml_parse( xml, sizeof( xml ), &e )) == NULL ) 
-    return print_error( &e );
-
-  b = uxml_new_node( x, "nodeB", "contentB" );
-  uxml_new_attr( x, "attrR2", "valueR2" );
-  uxml_new_attr( uxml_node( x, "nodeA" ), "attrA2", "valueA2" );
-  uxml_new_attr( b, "attrB1", "valueB1" );
-  printf( "\n=======\n%s=======\n", s = uxml_dump( x, NULL, 0, NULL ) );
-  uxml_dump_free( s );
-  uxml_free( x );
   return 1;
 }
 
@@ -275,9 +163,6 @@ int main()
   if( !test( test_nodes ) ) return 1;
   if( !test( test_escape ) ) return 1;
   if( !test_navigate() ) return 1;
-  if( !test_add() ) return 1;
-  if( !test_set() ) return 1;
-  if( !test_new() ) return 1;
   if( !test_base64() ) return 1;
   return 0;
 }
