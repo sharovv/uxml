@@ -1110,6 +1110,32 @@ uxml_node_t *uxml_child_node( uxml_node_t *node )
   return n;
 }
 
+uxml_node_t *uxml_first_attr( uxml_node_t *node )
+{
+  uxml_node_t *n = node->child;
+
+  while( n != NULL )
+  {
+    if( n->type == XML_ATTR )
+      break;
+    n = n->next;
+  }
+  return n;
+}
+
+uxml_node_t *uxml_next_attr( uxml_node_t *node )
+{
+  uxml_node_t *n = node->next;
+
+  while( n != NULL )
+  {
+    if( n->type == XML_ATTR )
+      break;
+    n = n->next;
+  }
+  return n;
+}
+
 uxml_node_t *uxml_next( uxml_node_t *node )
 {
   return node->next;

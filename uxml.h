@@ -171,6 +171,22 @@ uxml_node_t *uxml_child( uxml_node_t *node );
  */
 uxml_node_t *uxml_child_node( uxml_node_t *node );
 
+/*! Get first node's attribute
+ *
+ * \param node - node's pointer.
+ * \return First attribute of specified node,
+ * or NULL if there is no attributes children of this node.
+ * Other attributes can be obtained by sequence of \c uxml_next calls.
+ */
+uxml_node_t *uxml_first_attr( uxml_node_t *node );
+
+/*! Get next attribute
+ *
+ * \param node - node's pointer.
+ * \return Next attribute, or NULL if this is last attribute of parent node.
+ */
+uxml_node_t *uxml_next_attr( uxml_node_t *node );
+
 /*! Get next node
  *
  * \param node - node's pointer.
